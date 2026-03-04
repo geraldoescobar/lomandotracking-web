@@ -54,7 +54,10 @@ export default function NavBar() {
             </div>
           </Link>
           <div className="flex gap-2 items-center">
-            <span className="text-xs bg-white/20 px-2 py-1 rounded-full capitalize">{user.role}</span>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-medium">{user.name}</span>
+              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full capitalize">{user.role}</span>
+            </div>
             <button onClick={handleLogout} className="text-sm bg-white/20 px-2 py-1 rounded-full">Salir</button>
           </div>
         </div>
