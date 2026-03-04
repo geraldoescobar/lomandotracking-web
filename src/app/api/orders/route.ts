@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         query += ' AND o.status_id = ?';
         params.push(statusId);
       }
+      
       query += ' ORDER BY o.created_at DESC LIMIT ?';
       params.push(parseInt(limit));
       
