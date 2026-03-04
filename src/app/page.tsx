@@ -2,33 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 interface Order {
-  OrderId: number;
-  OrderCode: string;
-  OrderDescription: string;
-  OrderCreatedAt: string;
-  OrderCurrentStatusId: number;
-  OrderStatusName: string;
-  OrderStatusOrder: number;
-  CustomerName: string;
-  CustomerLastname: string;
-  CustomerPhone: string;
+  orderId: number;
+  orderCode: string;
+  description: string;
+  statusName: string;
+  statusOrder: number;
+  statusId: number;
+  created_at: string;
+  customerName: string;
+  customerLastname: string;
 }
 
 export default function Home() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
-    fetchOrders();
-  }, [filter]);
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [filter, user]);
 
   async function fetchOrders() {
     setLoading(true);
     try {
-      const url = filter === 'all' ? '/api/orders' : `/api/orders?statusId=${filter}`;
+      const url = filter === 'all' 
+        ? `/api/orders?userId=${user?.id}&role=${user?.role}`
+        : `/api/orders?userId=${user?.id}&role=${user?.role}&statusId=${filter}`;
       const res = await fetch(url);
       const data = await res.json();
       setOrders(data);
@@ -40,8 +53,8 @@ export default function Home() {
 
   function getStatusColor(statusOrder: number) {
     if (statusOrder <= 1) return 'bg-yellow-100 text-yellow-800';
-    if (statusOrder <= 3) return 'bg-blue-100 text-blue-800';
-    if (statusOrder <= 5) return 'bg-orange-100 text-orange-800';
+    if (statusOrder <= 2) return 'bg-blue-100 text-blue-800';
+    if (statusOrder <= 3) return 'bg-orange-100 text-orange-800';
     return 'bg-green-100 text-green-800';
   }
 
@@ -50,8 +63,19 @@ export default function Home() {
     return date.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit' });
   }
 
+  if (authLoading || !user) {
+    return null;
+  }
+
   return (
     <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold">
+          {user.role === 'manager' ? 'Todos los Pedidos' : 
+           user.role === 'driver' ? 'Mis Entregas' : 'Mis Pedidos'}
+        </h1>
+      </div>
+
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
         <button
           onClick={() => setFilter('all')}
@@ -69,13 +93,13 @@ export default function Home() {
           onClick={() => setFilter('2')}
           className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '2' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          En Curso
+          Asignados
         </button>
         <button
-          onClick={() => setFilter('6')}
-          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '6' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setFilter('4')}
+          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '4' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
         >
-          Entregados
+          Completados
         </button>
       </div>
 
@@ -91,22 +115,22 @@ export default function Home() {
         <div className="space-y-3">
           {orders.map((order) => (
             <Link
-              key={order.OrderId}
-              href={`/orders/${order.OrderId}`}
+              key={order.orderId}
+              href={`/orders/${order.orderId}`}
               className="block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <span className="font-bold text-indigo-600">#{order.OrderCode}</span>
-                  <p className="text-gray-800 font-medium line-clamp-1">{order.OrderDescription}</p>
+                  <span className="font-bold text-indigo-600">#{order.orderCode}</span>
+                  <p className="text-gray-800 font-medium line-clamp-1">{order.description}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.OrderStatusOrder)}`}>
-                  {order.OrderStatusName}
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.statusOrder)}`}>
+                  {order.statusName}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm text-gray-500">
-                <span>{order.CustomerName} {order.CustomerLastname}</span>
-                <span>{formatDate(order.OrderCreatedAt)}</span>
+                <span>{order.customerName} {order.customerLastname}</span>
+                <span>{formatDate(order.created_at)}</span>
               </div>
             </Link>
           ))}

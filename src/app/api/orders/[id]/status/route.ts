@@ -8,14 +8,14 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { statusId, observation, userId } = body;
+    const { statusId, userId, observation } = body;
 
     if (!statusId) {
       return NextResponse.json({ error: 'statusId is required' }, { status: 400 });
     }
 
     const [currentOrder]: any = await pool.execute(
-      'SELECT OrderCurrentStatusId FROM `Order` WHERE OrderId = ?',
+      'SELECT status_id FROM orders WHERE id = ?',
       [id]
     );
 
@@ -23,17 +23,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const previousStatusId = currentOrder[0].OrderCurrentStatusId;
+    const previousStatusId = currentOrder[0].status_id;
 
     await pool.execute(
-      'UPDATE `Order` SET OrderCurrentStatusId = ? WHERE OrderId = ?',
+      'UPDATE orders SET status_id = ? WHERE id = ?',
       [statusId, id]
     );
 
     await pool.execute(
-      `INSERT INTO Tracking (TrackingId, OrderId, TrackingPreviousStatusId, TrackingNextStatusId, TrackingObservation, TrackingTimestamp, TrackingUser)
-       VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
-      [Date.now(), id, previousStatusId, statusId, observation || '', userId || 'system']
+      `INSERT INTO order_tracking (order_id, from_status_id, to_status_id, observation, created_at, created_by)
+       VALUES (?, ?, ?, ?, NOW(), ?)`,
+      [id, previousStatusId, statusId, observation || '', userId || 'system']
     );
 
     return NextResponse.json({ success: true });

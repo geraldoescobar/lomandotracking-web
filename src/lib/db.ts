@@ -4,7 +4,7 @@ const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: 'Admin.159753',
-  database: 'lomandotracking',
+  database: 'lomando_app',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

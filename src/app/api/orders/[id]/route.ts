@@ -7,50 +7,143 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const userRole = searchParams.get('role');
     
-    const [rows]: any = await pool.execute(
-      `SELECT 
-        o.*,
-        c.CustomerName,
-        c.CustomerLastname,
-        c.CustomerPhone,
-        c.CustomerEmail,
-        os.OrderStatusName,
-        os.OrderStatusOrder
-      FROM \`Order\` o
-      LEFT JOIN Customer c ON o.CustomerId = c.CustomerId
-      LEFT JOIN OrderStatus os ON o.OrderCurrentStatusId = os.OrderStatusId
-      WHERE o.OrderId = ?`,
-      [id]
-    );
+    let orderQuery = '';
+    const orderParams: any[] = [id];
 
-    if (!rows || rows.length === 0) {
+    if (userRole === 'driver') {
+      orderQuery = `
+        SELECT 
+          o.id as orderId,
+          o.code as orderCode,
+          o.description,
+          o.type,
+          o.status_id,
+          o.notes,
+          o.created_at,
+          os.name as statusName,
+          os.display_order as statusOrder,
+          c.id as customerId,
+          c.name as customerName,
+          c.lastname as customerLastname,
+          c.phone as customerPhone,
+          c.email as customerEmail
+        FROM orders o
+        INNER JOIN customers c ON o.customer_id = c.id
+        INNER JOIN order_statuses os ON o.status_id = os.id
+        WHERE o.id = ?
+      `;
+    } else {
+      orderQuery = `
+        SELECT 
+          o.id as orderId,
+          o.code as orderCode,
+          o.description,
+          o.type,
+          o.status_id,
+          o.notes,
+          o.created_at,
+          os.name as statusName,
+          os.display_order as statusOrder,
+          c.id as customerId,
+          c.name as customerName,
+          c.lastname as customerLastname,
+          c.phone as customerPhone,
+          c.email as customerEmail
+        FROM orders o
+        INNER JOIN customers c ON o.customer_id = c.id
+        INNER JOIN order_statuses os ON o.status_id = os.id
+        WHERE o.id = ?
+      `;
+    }
+
+    const [orderRows]: any = await pool.query(orderQuery, orderParams);
+
+    if (!orderRows || orderRows.length === 0) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const order = rows[0];
+    const order = orderRows[0];
 
-    const [steps]: any = await pool.execute(
+    let stepsQuery = '';
+    const stepsParams: any[] = [id];
+
+    if (userRole === 'driver') {
+      stepsQuery = `
+        SELECT 
+          os.id as stepId,
+          os.step_type,
+          os.step_order,
+          os.address,
+          os.contact_name,
+          os.contact_phone,
+          os.notes,
+          os.package_qty,
+          os.code as stepCode,
+          oss.id as statusId,
+          oss.name as statusName,
+          oss.display_order as statusOrder,
+          d.id as driverId,
+          d.name as driverName,
+          os.arrived_at
+        FROM order_steps os
+        INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+        LEFT JOIN drivers d ON os.assigned_driver_id = d.id
+        WHERE os.order_id = ? AND os.assigned_driver_id = (
+          SELECT id FROM drivers WHERE user_id = ?
+        )
+        ORDER BY os.step_order
+      `;
+      stepsParams.push(userId);
+    } else {
+      stepsQuery = `
+        SELECT 
+          os.id as stepId,
+          os.step_type,
+          os.step_order,
+          os.address,
+          os.contact_name,
+          os.contact_phone,
+          os.notes,
+          os.package_qty,
+          os.code as stepCode,
+          oss.id as statusId,
+          oss.name as statusName,
+          oss.display_order as statusOrder,
+          d.id as driverId,
+          d.name as driverName,
+          os.arrived_at
+        FROM order_steps os
+        INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+        LEFT JOIN drivers d ON os.assigned_driver_id = d.id
+        WHERE os.order_id = ?
+        ORDER BY os.step_order
+      `;
+    }
+
+    const [steps]: any = await pool.query(stepsQuery, stepsParams);
+    order.steps = steps;
+
+    const [tracking]: any = await pool.query(
       `SELECT 
-        os.*,
-        s.OrderStatusName as StepStatusName,
-        d.DriverName,
-        d.DriverPhone,
-        a.AddressStreet,
-        a.AddressNumber,
-        a.AddressCity,
-        r.RegionName
-      FROM OrderStep os
-      LEFT JOIN OrderStatus s ON os.OrderStepCurrentStatusId = s.OrderStatusId
-      LEFT JOIN Driver d ON os.DriverId = d.DriverId
-      LEFT JOIN Address a ON os.AddressId = a.AddressId
-      LEFT JOIN Region r ON os.OrderStepRegionId = r.RegionId
-      WHERE os.OrderId = ?
-      ORDER BY os.OrderStepOrder`,
+        ot.id,
+        ot.observation,
+        ot.receiver_name,
+        ot.receiver_document,
+        ot.created_at,
+        oss_from.name as fromStatus,
+        oss_to.name as toStatus
+      FROM order_tracking ot
+      LEFT JOIN order_step_statuses oss_from ON ot.from_status_id = oss_from.id
+      LEFT JOIN order_step_statuses oss_to ON ot.to_status_id = oss_to.id
+      WHERE ot.order_id = ?
+      ORDER BY ot.created_at DESC`,
       [id]
     );
-
-    order.steps = steps;
+    order.tracking = tracking;
 
     return NextResponse.json(order);
   } catch (error) {

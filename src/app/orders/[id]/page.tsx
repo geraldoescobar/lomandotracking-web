@@ -2,61 +2,71 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
-interface OrderStep {
-  OrderStepId: number;
-  OrderStepType: string;
-  OrderStepOrder: number;
-  OrderStepAddress: string;
-  OrderStepContactName: string;
-  OrderStepContactPhone: string;
-  OrderStepNotes: string;
-  OrderStepCode: string;
-  StepStatusName: string;
-  DriverName: string;
+interface Step {
+  stepId: number;
+  step_type: string;
+  step_order: number;
+  address: string;
+  contact_name: string;
+  contact_phone: string;
+  notes: string;
+  package_qty: number;
+  stepCode: string;
+  statusId: number;
+  statusName: string;
+  statusOrder: number;
+  driverId: number;
+  driverName: string;
 }
 
 interface Tracking {
-  TrackingId: number;
-  TrackingTimestamp: string;
-  TrackingObservation: string;
-  PreviousStatusName: string;
-  NextStatusName: string;
+  id: number;
+  observation: string;
+  receiver_name: string;
+  receiver_document: string;
+  created_at: string;
+  fromStatus: string;
+  toStatus: string;
 }
 
 interface Order {
-  OrderId: number;
-  OrderCode: string;
-  OrderDescription: string;
-  OrderCreatedAt: string;
-  OrderNotes: string;
-  OrderCurrentStatusId: number;
-  OrderStatusName: string;
-  CustomerName: string;
-  CustomerLastname: string;
-  CustomerPhone: string;
-  CustomerEmail: string;
-  steps: OrderStep[];
+  orderId: number;
+  orderCode: string;
+  description: string;
+  notes: string;
+  type: string;
+  statusId: number;
+  statusName: string;
+  statusOrder: number;
+  created_at: string;
+  customerId: string;
+  customerName: string;
+  customerLastname: string;
+  customerPhone: string;
+  customerEmail: string;
+  steps: Step[];
+  tracking: Tracking[];
 }
 
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
-  const [tracking, setTracking] = useState<Tracking[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    if (params.id) {
+    if (params.id && user) {
       fetchOrder();
-      fetchTracking();
     }
-  }, [params.id]);
+  }, [params.id, user]);
 
   async function fetchOrder() {
     try {
-      const res = await fetch(`/api/orders/${params.id}`);
+      const res = await fetch(`/api/orders/${params.id}?userId=${user?.id}&role=${user?.role}`);
       if (res.ok) {
         const data = await res.json();
         setOrder(data);
@@ -67,19 +77,7 @@ export default function OrderDetailPage() {
     setLoading(false);
   }
 
-  async function fetchTracking() {
-    try {
-      const res = await fetch(`/api/orders/${params.id}/tracking`);
-      if (res.ok) {
-        const data = await res.json();
-        setTracking(data);
-      }
-    } catch (error) {
-      console.error('Error fetching tracking:', error);
-    }
-  }
-
-  async function updateStatus(newStatusId: number) {
+  async function updateStatus(newStatusId: number, observation?: string) {
     if (!confirm('¿Confirmar cambio de estado?')) return;
     
     setUpdating(true);
@@ -87,10 +85,13 @@ export default function OrderDetailPage() {
       await fetch(`/api/orders/${params.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statusId: newStatusId }),
+        body: JSON.stringify({ 
+          statusId: newStatusId, 
+          userId: user?.id,
+          observation 
+        }),
       });
       fetchOrder();
-      fetchTracking();
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -102,7 +103,14 @@ export default function OrderDetailPage() {
     return date.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
-  if (loading) {
+  function getStatusColor(statusOrder: number) {
+    if (statusOrder <= 1) return 'bg-yellow-100 text-yellow-800';
+    if (statusOrder <= 2) return 'bg-blue-100 text-blue-800';
+    if (statusOrder <= 3) return 'bg-orange-100 text-orange-800';
+    return 'bg-green-100 text-green-800';
+  }
+
+  if (loading || !user) {
     return (
       <div className="flex justify-center py-10">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -126,47 +134,59 @@ export default function OrderDetailPage() {
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <span className="text-2xl font-bold text-indigo-600">#{order.OrderCode}</span>
-            <p className="font-medium">{order.OrderDescription}</p>
+            <span className="text-2xl font-bold text-indigo-600">#{order.orderCode}</span>
+            <p className="font-medium">{order.description}</p>
           </div>
-          <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-            {order.OrderStatusName}
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
+            {order.statusName}
           </span>
         </div>
         
-        <div className="border-t pt-3 mt-3">
-          <h3 className="font-medium mb-2">Cliente</h3>
-          <p>{order.CustomerName} {order.CustomerLastname}</p>
-          <p className="text-gray-600">{order.CustomerPhone}</p>
-          {order.CustomerEmail && <p className="text-gray-600">{order.CustomerEmail}</p>}
-        </div>
+        {user.role !== 'driver' && (
+          <div className="border-t pt-3 mt-3">
+            <h3 className="font-medium mb-2">Cliente</h3>
+            <p>{order.customerName} {order.customerLastname}</p>
+            <p className="text-gray-600">{order.customerPhone}</p>
+            {order.customerEmail && <p className="text-gray-600">{order.customerEmail}</p>}
+          </div>
+        )}
 
-        {order.OrderNotes && (
+        {order.notes && (
           <div className="border-t pt-3 mt-3">
             <h3 className="font-medium mb-1">Notas</h3>
-            <p className="text-gray-600">{order.OrderNotes}</p>
+            <p className="text-gray-600">{order.notes}</p>
           </div>
         )}
       </div>
 
       {order.steps && order.steps.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <h3 className="font-bold mb-3">Pasos del pedido</h3>
+          <h3 className="font-bold mb-3">
+            {user.role === 'driver' ? 'Mis Destinos' : 'Pasos del pedido'}
+          </h3>
           <div className="space-y-3">
             {order.steps.map((step, index) => (
-              <div key={step.OrderStepId} className="border-l-2 border-indigo-300 pl-3">
-                <div className="flex justify-between">
-                  <span className="font-medium">{step.OrderStepType}</span>
-                  <span className="text-sm text-gray-500">{step.StepStatusName}</span>
+              <div key={step.stepId} className="border-l-2 border-indigo-300 pl-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-medium capitalize">{step.step_type}</span>
+                    {step.stepCode && (
+                      <span className="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded">{step.stepCode}</span>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(step.statusOrder)}`}>
+                    {step.statusName}
+                  </span>
                 </div>
-                {step.OrderStepAddress && (
-                  <p className="text-sm text-gray-600">{step.OrderStepAddress}</p>
+                <p className="text-sm text-gray-600">{step.address}</p>
+                {step.contact_name && (
+                  <p className="text-sm text-gray-600">{step.contact_name} - {step.contact_phone}</p>
                 )}
-                {step.OrderStepContactName && (
-                  <p className="text-sm text-gray-600">{step.OrderStepContactName} - {step.OrderStepContactPhone}</p>
+                {step.notes && (
+                  <p className="text-sm text-gray-500 italic">{step.notes}</p>
                 )}
-                {step.DriverName && (
-                  <p className="text-sm text-indigo-600">Repartidor: {step.DriverName}</p>
+                {step.driverName && user.role === 'manager' && (
+                  <p className="text-sm text-indigo-600">Driver: {step.driverName}</p>
                 )}
               </div>
             ))}
@@ -176,18 +196,21 @@ export default function OrderDetailPage() {
 
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <h3 className="font-bold mb-3">Historial</h3>
-        {tracking.length === 0 ? (
+        {(!order.tracking || order.tracking.length === 0) ? (
           <p className="text-gray-500 text-sm">Sin historial</p>
         ) : (
           <div className="space-y-2">
-            {tracking.map((t) => (
-              <div key={t.TrackingId} className="text-sm">
+            {order.tracking.map((t) => (
+              <div key={t.id} className="text-sm">
                 <div className="flex justify-between">
-                  <span className="font-medium">{t.NextStatusName}</span>
-                  <span className="text-gray-500">{formatDate(t.TrackingTimestamp)}</span>
+                  <span className="font-medium">{t.toStatus}</span>
+                  <span className="text-gray-500">{formatDate(t.created_at)}</span>
                 </div>
-                {t.TrackingObservation && (
-                  <p className="text-gray-600">{t.TrackingObservation}</p>
+                {t.observation && (
+                  <p className="text-gray-600">{t.observation}</p>
+                )}
+                {t.receiver_name && (
+                  <p className="text-gray-500 text-xs">Receptor: {t.receiver_name} ({t.receiver_document})</p>
                 )}
               </div>
             ))}
@@ -195,39 +218,48 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <h3 className="font-bold mb-3">Cambiar Estado</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => updateStatus(2)}
-            disabled={updating || order.OrderCurrentStatusId === 2}
-            className="bg-blue-500 text-white py-2 rounded-lg disabled:opacity-50"
-          >
-            Iniciar
-          </button>
-          <button
-            onClick={() => updateStatus(3)}
-            disabled={updating || order.OrderCurrentStatusId === 3}
-            className="bg-orange-500 text-white py-2 rounded-lg disabled:opacity-50"
-          >
-            En Reparto
-          </button>
-          <button
-            onClick={() => updateStatus(6)}
-            disabled={updating || order.OrderCurrentStatusId === 6}
-            className="bg-green-500 text-white py-2 rounded-lg disabled:opacity-50"
-          >
-            Entregado
-          </button>
-          <button
-            onClick={() => updateStatus(7)}
-            disabled={updating || order.OrderCurrentStatusId === 7}
-            className="bg-red-500 text-white py-2 rounded-lg disabled:opacity-50"
-          >
-            Cancelado
-          </button>
+      {user.role === 'manager' && (
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+          <h3 className="font-bold mb-3">Cambiar Estado de Orden</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => updateStatus(1)}
+              disabled={updating || order.statusId === 1}
+              className="bg-yellow-500 text-white py-2 rounded-lg disabled:opacity-50"
+            >
+              Pendiente
+            </button>
+            <button
+              onClick={() => updateStatus(2)}
+              disabled={updating || order.statusId === 2}
+              className="bg-blue-500 text-white py-2 rounded-lg disabled:opacity-50"
+            >
+              Asignado
+            </button>
+            <button
+              onClick={() => updateStatus(3)}
+              disabled={updating || order.statusId === 3}
+              className="bg-orange-500 text-white py-2 rounded-lg disabled:opacity-50"
+            >
+              En Curso
+            </button>
+            <button
+              onClick={() => updateStatus(4)}
+              disabled={updating || order.statusId === 4}
+              className="bg-green-500 text-white py-2 rounded-lg disabled:opacity-50"
+            >
+              Completado
+            </button>
+            <button
+              onClick={() => updateStatus(5)}
+              disabled={updating || order.statusId === 5}
+              className="bg-red-500 text-white py-2 rounded-lg disabled:opacity-50 col-span-2"
+            >
+              Cancelar Orden
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
