@@ -19,10 +19,14 @@ export default function NavBar() {
       <nav className="fixed top-0 left-0 right-0 bg-gradient-to-r from-sky-500 to-sky-400 text-white p-3 z-50 shadow-md">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <Link href="/track" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-              <span className="text-sky-500 font-bold text-sm">L</span>
+            <div className="w-8 h-8 relative">
+              <Image 
+                src="/logo_3.png" 
+                alt="Lomando" 
+                fill
+                className="object-contain"
+              />
             </div>
-            <span className="text-lg font-semibold">Lomando</span>
           </Link>
           <Link href="/login" className="text-sm bg-white/20 px-3 py-1 rounded-full">Ingresar</Link>
         </div>
@@ -40,10 +44,14 @@ export default function NavBar() {
       <nav className="fixed top-0 left-0 right-0 bg-gradient-to-r from-sky-500 to-sky-400 text-white p-3 z-50 shadow-md">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-              <span className="text-sky-500 font-bold text-sm">L</span>
+            <div className="w-8 h-8 relative">
+              <Image 
+                src="/logo_3.png" 
+                alt="Lomando" 
+                fill
+                className="object-contain"
+              />
             </div>
-            <span className="text-lg font-semibold">Lomando</span>
           </Link>
           <div className="flex gap-2 items-center">
             <span className="text-xs bg-white/20 px-2 py-1 rounded-full capitalize">{user.role}</span>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function ScanPage() {
   const router = useRouter();
@@ -57,9 +58,19 @@ export default function ScanPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Escanear QR</h1>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 relative">
+          <Image 
+            src="/driverIcon.png" 
+            alt="Driver" 
+            fill
+            className="object-contain"
+          />
+        </div>
+        <h1 className="text-xl font-bold text-gray-800">Escanear QR</h1>
+      </div>
       
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div id="qr-reader" className="w-full rounded-lg overflow-hidden"></div>
         
         {error && (
@@ -69,33 +80,33 @@ export default function ScanPage() {
         {scanning ? (
           <button
             onClick={stopScan}
-            className="w-full mt-4 bg-red-500 text-white py-2 rounded-lg"
+            className="w-full mt-4 bg-red-500 text-white py-3 rounded-xl font-medium"
           >
             Detener
           </button>
         ) : (
           <button
             onClick={startScan}
-            className="w-full mt-4 bg-indigo-600 text-white py-2 rounded-lg"
+            className="w-full mt-4 bg-sky-500 text-white py-3 rounded-xl font-medium hover:bg-sky-600 shadow-md"
           >
             Iniciar Cámara
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <h2 className="font-medium mb-2">Ingresar código manualmente</h2>
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <h2 className="font-medium mb-3 text-gray-700">Ingresar código manualmente</h2>
         <form onSubmit={handleManualSubmit} className="flex gap-2">
           <input
             type="text"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             placeholder="Código del pedido"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
           />
           <button
             type="submit"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+            className="bg-sky-500 text-white px-4 py-2 rounded-xl hover:bg-sky-600"
           >
             Buscar
           </button>

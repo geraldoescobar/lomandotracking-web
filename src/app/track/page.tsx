@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface Step {
   stepId: number;
@@ -68,13 +69,18 @@ export default function TrackPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="bg-gradient-to-b from-sky-400 to-sky-300 p-6 pb-12">
+      <div className="bg-gradient-to-b from-sky-500 to-sky-300 p-6 pb-10">
         <div className="text-center">
-          <div className="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center shadow-lg mb-3">
-            <span className="text-sky-500 font-bold text-2xl">L</span>
+          <div className="w-20 h-20 mx-auto mb-3 relative">
+            <Image 
+              src="/logo_3.png" 
+              alt="Lomando" 
+              fill
+              className="object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white">Rastrear Pedido</h1>
-          <p className="text-sky-100 text-sm mt-1">Ingresá el código o escaneá el QR</p>
+          <h1 className="text-xl font-bold text-white">Rastrear Pedido</h1>
+          <p className="text-white/80 text-sm mt-1">Ingresá el código o escaneá el QR</p>
         </div>
       </div>
 

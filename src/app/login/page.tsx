@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,13 +31,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="bg-gradient-to-b from-sky-400 to-sky-300 p-8 pb-16">
+      <div className="bg-gradient-to-b from-sky-500 to-sky-300 p-8 pb-16">
         <div className="text-center">
-          <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center shadow-lg mb-4">
-            <span className="text-sky-500 font-bold text-3xl">L</span>
+          <div className="w-28 h-28 mx-auto mb-4 relative">
+            <Image 
+              src="/logo_3.png" 
+              alt="Lomando" 
+              fill
+              className="object-contain"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-white">Lomando</h1>
-          <p className="text-sky-100 mt-1">Tracking de pedidos</p>
+          <p className="text-white/80 text-sm mt-1">Tracking de pedidos</p>
         </div>
       </div>
 
