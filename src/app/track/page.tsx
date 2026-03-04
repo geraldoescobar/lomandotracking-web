@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface Step {
   stepId: number;
@@ -27,7 +26,6 @@ interface Order {
 }
 
 export default function TrackPage() {
-  const router = useRouter();
   const [code, setCode] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,7 +56,7 @@ export default function TrackPage() {
 
   function getStatusColor(statusOrder: number) {
     if (statusOrder <= 1) return 'bg-yellow-100 text-yellow-800';
-    if (statusOrder <= 2) return 'bg-blue-100 text-blue-800';
+    if (statusOrder <= 2) return 'bg-sky-100 text-sky-800';
     if (statusOrder <= 3) return 'bg-orange-100 text-orange-800';
     return 'bg-green-100 text-green-800';
   }
@@ -69,86 +67,93 @@ export default function TrackPage() {
   }
 
   return (
-    <div className="p-4">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-indigo-600 mb-2">Rastrear Pedido</h1>
-        <p className="text-gray-600 text-sm">Ingresá el código de tu pedido o escaneá el QR</p>
+    <div className="min-h-screen">
+      <div className="bg-gradient-to-b from-sky-400 to-sky-300 p-6 pb-12">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center shadow-lg mb-3">
+            <span className="text-sky-500 font-bold text-2xl">L</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Rastrear Pedido</h1>
+          <p className="text-sky-100 text-sm mt-1">Ingresá el código o escaneá el QR</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSearch} className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Código del pedido (ej: D000000010000)"
-          className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-3"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium disabled:opacity-50"
-        >
-          {loading ? 'Buscando...' : 'Buscar'}
-        </button>
-      </form>
+      <div className="px-4 -mt-6">
+        <form onSubmit={handleSearch} className="bg-white rounded-xl shadow-lg p-4">
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Código (ej: D000000010000)"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md"
+          >
+            {loading ? 'Buscando...' : 'Buscar'}
+          </button>
+        </form>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      {order && (
-        <>
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <span className="text-2xl font-bold text-indigo-600">#{order.orderCode}</span>
-                <p className="font-medium">{order.description}</p>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
-                {order.statusName}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500">
-              Pedido creado: {formatDate(order.created_at)}
-            </p>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mt-4">
+            {error}
           </div>
+        )}
 
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <h3 className="font-bold mb-3">Estado de entrega</h3>
-            <div className="space-y-4">
-              {order.steps.map((step, index) => (
-                <div key={step.stepId} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-full ${step.statusOrder >= 4 ? 'bg-green-500' : step.statusOrder >= 2 ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                    {index < order.steps.length - 1 && (
-                      <div className={`w-0.5 h-full ${step.statusOrder >= 4 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-                    )}
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <div className="flex justify-between">
-                      <span className="font-medium capitalize">{step.step_type}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(step.statusOrder)}`}>
-                        {step.statusName}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">{step.address}</p>
-                    {step.contact_name && (
-                      <p className="text-sm text-gray-500">Contacto: {step.contact_name} {step.contact_phone}</p>
-                    )}
-                  </div>
+        {order && (
+          <>
+            <div className="bg-white rounded-xl shadow-sm p-5 mt-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <span className="text-2xl font-bold text-sky-600">#{order.orderCode}</span>
+                  <p className="font-medium text-gray-800">{order.description}</p>
                 </div>
-              ))}
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
+                  {order.statusName}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500">
+                Creado: {formatDate(order.created_at)}
+              </p>
             </div>
-          </div>
-        </>
-      )}
 
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-500">
-          ¿Sos el remitente? <a href="/login" className="text-indigo-600">Ingresar</a>
-        </p>
+            <div className="bg-white rounded-xl shadow-sm p-5 mt-4">
+              <h3 className="font-bold text-gray-800 mb-4">Estado de entrega</h3>
+              <div className="space-y-4">
+                {order.steps.map((step, index) => (
+                  <div key={step.stepId} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-4 h-4 rounded-full ${step.statusOrder >= 4 ? 'bg-green-500' : step.statusOrder >= 2 ? 'bg-sky-500' : 'bg-gray-300'}`}></div>
+                      {index < order.steps.length - 1 && (
+                        <div className={`w-0.5 h-12 ${step.statusOrder >= 4 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+                      )}
+                    </div>
+                    <div className="flex-1 pb-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium capitalize text-gray-800">{step.step_type}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(step.statusOrder)}`}>
+                          {step.statusName}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{step.address}</p>
+                      {step.contact_name && (
+                        <p className="text-sm text-gray-500">📞 {step.contact_name} - {step.contact_phone}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="mt-6 text-center pb-6">
+          <p className="text-sm text-gray-500">
+            ¿Sos el remitente? <a href="/login" className="text-sky-600 font-medium">Ingresar</a>
+          </p>
+        </div>
       </div>
     </div>
   );

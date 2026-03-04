@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #1e293b;
 }
 
 @theme inline {
@@ -12,18 +12,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   padding-bottom: env(safe-area-inset-bottom, 20px);
+  min-height: 100vh;
 }
 
 .pb-safe {
@@ -35,4 +29,11 @@ body {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.bg-grid-sky {
+  background-image: 
+    linear-gradient(to right, rgba(14, 165, 233, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }

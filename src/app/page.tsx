@@ -53,7 +53,7 @@ export default function Home() {
 
   function getStatusColor(statusOrder: number) {
     if (statusOrder <= 1) return 'bg-yellow-100 text-yellow-800';
-    if (statusOrder <= 2) return 'bg-blue-100 text-blue-800';
+    if (statusOrder <= 2) return 'bg-sky-100 text-sky-800';
     if (statusOrder <= 3) return 'bg-orange-100 text-orange-800';
     return 'bg-green-100 text-green-800';
   }
@@ -79,25 +79,25 @@ export default function Home() {
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === 'all' ? 'bg-sky-500 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200'}`}
         >
           Todos
         </button>
         <button
           onClick={() => setFilter('1')}
-          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '1' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === '1' ? 'bg-sky-500 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200'}`}
         >
           Pendientes
         </button>
         <button
           onClick={() => setFilter('2')}
-          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '2' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === '2' ? 'bg-sky-500 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200'}`}
         >
           Asignados
         </button>
         <button
           onClick={() => setFilter('4')}
-          className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${filter === '4' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === '4' ? 'bg-sky-500 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200'}`}
         >
           Completados
         </button>
@@ -105,7 +105,7 @@ export default function Home() {
 
       {loading ? (
         <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
         </div>
       ) : orders.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
@@ -117,11 +117,11 @@ export default function Home() {
             <Link
               key={order.orderId}
               href={`/orders/${order.orderId}`}
-              className="block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow"
+              className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow border border-gray-100"
             >
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <span className="font-bold text-indigo-600">#{order.orderCode}</span>
+                  <span className="font-bold text-sky-600">#{order.orderCode}</span>
                   <p className="text-gray-800 font-medium line-clamp-1">{order.description}</p>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.statusOrder)}`}>
