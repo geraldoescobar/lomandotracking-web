@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface Step {
   stepId: number;
@@ -53,17 +54,56 @@ export default function ScanPage() {
   const [receiverName, setReceiverName] = useState('');
   const [receiverDocument, setReceiverDocument] = useState('');
   const [stepNotes, setStepNotes] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const qrRef = useRef<Html5Qrcode | null>(null);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) return;
+  useEffect(() => {
+    return () => {
+      if (qrRef.current?.isScanning) {
+        qrRef.current.stop();
+      }
+    };
+  }, []);
+
+  async function startScan() {
+    setScanError('');
+    try {
+      const qr = new Html5Qrcode('qr-reader');
+      qrRef.current = qr;
+      
+      await qr.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          qr.stop();
+          setCode(decodedText.toUpperCase());
+          handleCodeSearch(decodedText.toUpperCase());
+        },
+        () => {}
+      );
+      setScanning(true);
+    } catch (err) {
+      setScanError('Error al iniciar cámara. Verificá permisos.');
+      console.error(err);
+    }
+  }
+
+  async function stopScan() {
+    if (qrRef.current?.isScanning) {
+      await qrRef.current.stop();
+    }
+    setScanning(false);
+  }
+
+  async function handleCodeSearch(searchCode: string) {
+    if (!searchCode.trim()) return;
 
     setLoading(true);
     setError('');
-    setResult(null);
 
     try {
-      const url = user ? `/api/scan?code=${code.trim()}&role=${user.role}&userId=${user.id}` : `/api/scan?code=${code.trim()}`;
+      const url = user ? `/api/scan?code=${searchCode.trim()}&role=${user.role}&userId=${user.id}` : `/api/scan?code=${searchCode.trim()}`;
       const res = await fetch(url);
       
       if (res.ok) {
@@ -78,6 +118,11 @@ export default function ScanPage() {
     }
 
     setLoading(false);
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    await handleCodeSearch(code);
   }
 
   async function startDelivery() {
@@ -169,6 +214,32 @@ export default function ScanPage() {
         </div>
         <h1 className="text-xl font-bold text-gray-800">Escanear</h1>
       </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+        <div id="qr-reader" className="w-full rounded-lg overflow-hidden mb-3"></div>
+        
+        {scanError && (
+          <p className="text-red-500 text-sm mb-2">{scanError}</p>
+        )}
+        
+        {scanning ? (
+          <button
+            onClick={stopScan}
+            className="w-full bg-red-500 text-white py-3 rounded-xl font-medium"
+          >
+            ⬛ Detener Cámara
+          </button>
+        ) : (
+          <button
+            onClick={startScan}
+            className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 shadow-md mb-4"
+          >
+            📷 Escanear QR
+          </button>
+        )}
+      </div>
+
+      <div className="text-center text-gray-400 text-sm mb-4">— o ingresar manualmente —</div>
 
       <form onSubmit={handleSearch} className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <input
