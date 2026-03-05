@@ -133,12 +133,78 @@ export default function OrderDetailPage() {
   }
 
   function canStartDelivery() {
-    if (!order || user?.role !== 'driver') return false;
+    if (!order) return false;
     return order.statusId === 1 || order.statusId === 2;
   }
 
+  function getStatusButtonText() {
+    if (!order) return '';
+    if (order.statusId === 1) return 'Iniciar Pedido';
+    if (order.statusId === 2) return 'Iniciar Entrega';
+    if (order.statusId === 3) return 'En Curso';
+    if (order.statusId === 4) return 'Completado';
+    return '';
+  }
+
   function handlePrint() {
-    window.print();
+    if (!order) return;
+    
+    const printContent = `
+=======================================
+         HOJA DE RUTA - LOMANDO
+=======================================
+
+ORDEN: ${order.orderCode}
+Fecha: ${new Date().toLocaleDateString('es-UY')}
+=======================================
+
+CLIENTE:
+${order.customerName} ${order.customerLastname}
+Tel: ${order.customerPhone}
+${order.customerEmail || ''}
+
+${order.notes ? `NOTAS: ${order.notes}` : ''}
+
+=======================================
+           DESTINOS
+=======================================
+
+${order.steps?.map((step, i) => `
+${i + 1}. ${step.step_type.toUpperCase()} - Código: ${step.stepCode || 'N/A'}
+   Dirección: ${step.address}
+   Contacto: ${step.contact_name || 'N/A'} - ${step.contact_phone || 'N/A'}
+   Paquetes: ${step.package_qty || 0}
+   Estado: ${step.statusName}
+   ${step.notes ? `Notas: ${step.notes}` : ''}
+`).join('')}
+
+=======================================
+Firma Receptor: _______________________
+DNI Receptor: ________________________
+Hora Entrega: __________________________
+
+=======================================
+      Lomando - Tracking de Pedidos
+=======================================
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Hoja de Ruta - ${order.orderCode}</title>
+            <style>
+              body { font-family: monospace; white-space: pre-wrap; padding: 20px; }
+              @media print { body { padding: 0; } }
+            </style>
+          </head>
+          <body>${printContent}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
   }
 
   if (loading || !user) {
@@ -188,8 +254,14 @@ export default function OrderDetailPage() {
             disabled={updating}
             className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md mb-4"
           >
-            {updating ? 'Actualizando...' : '🚀 Iniciar Entrega'}
+            {updating ? 'Actualizando...' : `🚀 ${getStatusButtonText()}`}
           </button>
+        )}
+
+        {!canStartDelivery() && order.statusId === 3 && (
+          <div className="w-full bg-orange-50 text-orange-700 py-3 rounded-xl font-medium text-center mb-4 border border-orange-200">
+            🚚 Orden en curso
+          </div>
         )}
         
         {user.role !== 'driver' && (
