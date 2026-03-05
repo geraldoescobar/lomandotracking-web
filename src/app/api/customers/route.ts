@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest, authorizeRoles } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const roleCheck = authorizeRoles(authResult, 'manager');
+    if (roleCheck) return roleCheck;
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 

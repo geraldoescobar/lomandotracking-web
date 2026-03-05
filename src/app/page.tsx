@@ -18,7 +18,7 @@ interface Order {
 }
 
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, authFetch } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +39,10 @@ export default function Home() {
   async function fetchOrders() {
     setLoading(true);
     try {
-      const url = filter === 'all' 
-        ? `/api/orders?userId=${user?.id}&role=${user?.role}`
-        : `/api/orders?userId=${user?.id}&role=${user?.role}&statusId=${filter}`;
-      const res = await fetch(url);
+      const url = filter === 'all'
+        ? `/api/orders`
+        : `/api/orders?statusId=${filter}`;
+      const res = await authFetch(url);
       const data = await res.json();
       setOrders(data);
     } catch (error) {

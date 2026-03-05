@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const user = authResult;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const userRole = searchParams.get('role');
     const statusId = searchParams.get('statusId');
     const limit = searchParams.get('limit') || '50';
 
     let query = '';
     const params: any[] = [];
 
-    if (userRole === 'driver') {
+    if (user.role === 'driver') {
       query = `
         SELECT DISTINCT
           o.id as orderId,
@@ -34,19 +37,19 @@ export async function GET(request: Request) {
         INNER JOIN order_statuses os ON o.status_id = os.id
         WHERE d.user_id = ?
       `;
-      params.push(userId);
-      
+      params.push(user.userId);
+
       if (statusId) {
         query += ' AND o.status_id = ?';
         params.push(statusId);
       }
-      
+
       query += ' ORDER BY o.created_at DESC LIMIT ?';
       params.push(parseInt(limit));
-      
-    } else if (userRole === 'customer') {
+
+    } else if (user.role === 'customer') {
       query = `
-        SELECT 
+        SELECT
           o.id as orderId,
           o.code as orderCode,
           o.description,
@@ -64,19 +67,19 @@ export async function GET(request: Request) {
         INNER JOIN order_statuses os ON o.status_id = os.id
         WHERE c.user_id = ?
       `;
-      params.push(userId);
-      
+      params.push(user.userId);
+
       if (statusId) {
         query += ' AND o.status_id = ?';
         params.push(statusId);
       }
-      
+
       query += ' ORDER BY o.created_at DESC LIMIT ?';
       params.push(parseInt(limit));
-      
+
     } else {
       query = `
-        SELECT 
+        SELECT
           o.id as orderId,
           o.code as orderCode,
           o.description,
@@ -94,12 +97,12 @@ export async function GET(request: Request) {
         INNER JOIN order_statuses os ON o.status_id = os.id
         WHERE 1=1
       `;
-      
+
       if (statusId) {
         query += ' AND o.status_id = ?';
         params.push(statusId);
       }
-      
+
       query += ' ORDER BY o.created_at DESC LIMIT ?';
       params.push(parseInt(limit));
     }

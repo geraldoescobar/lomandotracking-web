@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 interface Customer {
   CustomerId: string;
@@ -12,6 +13,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const { authFetch } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,7 +26,7 @@ export default function CustomersPage() {
     setLoading(true);
     try {
       const url = search ? `/api/customers?search=${search}` : '/api/customers';
-      const res = await fetch(url);
+      const res = await authFetch(url);
       const data = await res.json();
       setCustomers(data);
     } catch (error) {

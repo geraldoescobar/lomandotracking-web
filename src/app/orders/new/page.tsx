@@ -39,7 +39,7 @@ interface DestinationStep {
 
 export default function NewOrderPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [loading, setLoading] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
@@ -73,7 +73,7 @@ export default function NewOrderPage() {
 
   async function fetchAddresses() {
     try {
-      const res = await fetch(`/api/addresses?customerId=${user?.id}`);
+      const res = await authFetch(`/api/addresses?customerId=${user?.id}`);
       const data = await res.json();
       setAddresses(data);
     } catch (err) {
@@ -123,12 +123,10 @@ export default function NewOrderPage() {
         address: fullAddress
       };
       
-      const res = await fetch('/api/orders/create', {
+      const res = await authFetch('/api/orders/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: user?.id,
-          userId: user?.id,
           description: orderDescription,
           notes: orderNotes,
           type: 'distribution',

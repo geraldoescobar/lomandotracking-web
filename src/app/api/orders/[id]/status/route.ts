@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest, authorizeRoles } from '@/lib/auth';
+import { updateOrderStatusSchema, getValidationError } from '@/lib/validation';
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const roleCheck = authorizeRoles(authResult, 'manager');
+    if (roleCheck) return roleCheck;
+
     const { id } = await params;
     const body = await request.json();
-    const { statusId, userId, observation } = body;
+    const parsed = updateOrderStatusSchema.safeParse(body);
 
-    if (!statusId) {
-      return NextResponse.json({ error: 'statusId is required' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
     }
+
+    const { statusId, observation } = parsed.data;
 
     const [currentOrder]: any = await pool.execute(
       'SELECT status_id FROM orders WHERE id = ?',
@@ -33,7 +43,7 @@ export async function PUT(
     await pool.execute(
       `INSERT INTO order_tracking (order_id, from_status_id, to_status_id, observation, created_at, created_by)
        VALUES (?, ?, ?, ?, NOW(), ?)`,
-      [id, previousStatusId, statusId, observation || '', userId || 'system']
+      [id, previousStatusId, statusId, observation, authResult.userId]
     );
 
     return NextResponse.json({ success: true });
