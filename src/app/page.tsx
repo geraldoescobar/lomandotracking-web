@@ -70,10 +70,18 @@ export default function Home() {
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">
+        <h1 className="text-xl font-bold text-gray-800">
           {user.role === 'manager' ? 'Todos los Pedidos' : 
            user.role === 'driver' ? 'Mis Entregas' : 'Mis Pedidos'}
         </h1>
+        {(user.role === 'customer' || user.role === 'manager') && (
+          <Link 
+            href="/orders/new" 
+            className="bg-sky-500 text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-md"
+          >
+            + Nueva
+          </Link>
+        )}
       </div>
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
