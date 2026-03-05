@@ -1,0 +1,147 @@
+import { NextResponse } from 'next/server';
+import pool from '@/lib/db';
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const code = searchParams.get('code');
+    const userRole = searchParams.get('role');
+    const userId = searchParams.get('userId');
+
+    if (!code) {
+      return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
+    }
+
+    const [orders]: any = await pool.execute(
+      `SELECT 
+        o.id as orderId,
+        o.code as orderCode,
+        o.description,
+        o.status_id,
+        os.name as statusName,
+        os.display_order as statusOrder,
+        o.created_at,
+        c.id as customerId,
+        c.name as customerName,
+        c.lastname as customerLastname,
+        c.phone as customerPhone,
+        c.email as customerEmail
+      FROM orders o
+      INNER JOIN customers c ON o.customer_id = c.id
+      INNER JOIN order_statuses os ON o.status_id = os.id
+      WHERE o.code = ?`,
+      [code]
+    );
+
+    if (orders && orders.length > 0) {
+      const order = orders[0];
+      
+      let steps = [];
+      if (userRole === 'driver') {
+        const [driverSteps]: any = await pool.query(
+          `SELECT 
+            os.id as stepId,
+            os.step_type,
+            os.step_order,
+            os.address,
+            os.contact_name,
+            os.contact_phone,
+            os.notes,
+            os.package_qty,
+            os.code as stepCode,
+            oss.id as statusId,
+            oss.name as statusName,
+            oss.display_order as statusOrder,
+            os.assigned_driver_id,
+            d.user_id as driverUserId
+          FROM order_steps os
+          INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+          LEFT JOIN drivers d ON os.assigned_driver_id = d.id
+          WHERE os.order_id = ? AND (os.assigned_driver_id IS NULL OR d.user_id = ?)
+          ORDER BY os.step_order`,
+          [order.orderId, userId]
+        );
+        steps = driverSteps;
+      } else {
+        const [allSteps]: any = await pool.query(
+          `SELECT 
+            os.id as stepId,
+            os.step_type,
+            os.step_order,
+            os.address,
+            os.contact_name,
+            os.contact_phone,
+            os.notes,
+            os.package_qty,
+            os.code as stepCode,
+            oss.id as statusId,
+            oss.name as statusName,
+            oss.display_order as statusOrder
+          FROM order_steps os
+          INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+          WHERE os.order_id = ?
+          ORDER BY os.step_order`,
+          [order.orderId]
+        );
+        steps = allSteps;
+      }
+
+      const [tracking]: any = await pool.query(
+        `SELECT ot.*, oss_from.name as fromStatus, oss_to.name as toStatus
+         FROM order_tracking ot
+         LEFT JOIN order_step_statuses oss_from ON ot.from_status_id = oss_from.id
+         LEFT JOIN order_step_statuses oss_to ON ot.to_status_id = oss_to.id
+         WHERE ot.order_id = ?
+         ORDER BY ot.created_at DESC`,
+        [order.orderId]
+      );
+
+      return NextResponse.json({
+        type: 'order',
+        order,
+        steps,
+        tracking
+      });
+    }
+
+    const [steps]: any = await pool.execute(
+      `SELECT 
+        os.id as stepId,
+        os.order_id,
+        os.step_type,
+        os.step_order,
+        os.address,
+        os.contact_name,
+        os.contact_phone,
+        os.notes,
+        os.package_qty,
+        os.code as stepCode,
+        oss.id as statusId,
+        oss.name as statusName,
+        oss.display_order as statusOrder,
+        o.code as orderCode,
+        o.description as orderDescription,
+        c.name as customerName,
+        c.lastname as customerLastname
+      FROM order_steps os
+      INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+      INNER JOIN orders o ON os.order_id = o.id
+      INNER JOIN customers c ON o.customer_id = c.id
+      WHERE os.code = ?`,
+      [code]
+    );
+
+    if (!steps || steps.length === 0) {
+      return NextResponse.json({ error: 'No se encontró ningún pedido con ese código' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      type: 'step',
+      step: steps[0]
+    });
+
+  } catch (error) {
+    console.error('Error scanning:', error);
+    return NextResponse.json({ error: 'Error al buscar' }, { status: 500 });
+  }
+}
