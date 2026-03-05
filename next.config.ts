@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
-  turbopack: {},
 };
 
 const pwaConfig = withPWA({

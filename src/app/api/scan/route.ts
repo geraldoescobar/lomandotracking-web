@@ -36,54 +36,41 @@ export async function GET(request: Request) {
     if (orders && orders.length > 0) {
       const order = orders[0];
       
-      let steps = [];
+      const [allSteps]: any = await pool.query(
+        `SELECT 
+          os.id as stepId,
+          os.step_type,
+          os.step_order,
+          os.address,
+          os.contact_name,
+          os.contact_phone,
+          os.notes,
+          os.package_qty,
+          os.code as stepCode,
+          oss.id as statusId,
+          oss.name as statusName,
+          oss.display_order as statusOrder,
+          os.assigned_driver_id,
+          d.name as driverName
+        FROM order_steps os
+        INNER JOIN order_step_statuses oss ON os.status_id = oss.id
+        LEFT JOIN drivers d ON os.assigned_driver_id = d.id
+        WHERE os.order_id = ?
+        ORDER BY os.step_order`,
+        [order.orderId]
+      );
+      const steps = allSteps;
+
+      let driverSteps = [];
       if (userRole === 'driver') {
-        const [driverSteps]: any = await pool.query(
-          `SELECT 
-            os.id as stepId,
-            os.step_type,
-            os.step_order,
-            os.address,
-            os.contact_name,
-            os.contact_phone,
-            os.notes,
-            os.package_qty,
-            os.code as stepCode,
-            oss.id as statusId,
-            oss.name as statusName,
-            oss.display_order as statusOrder,
-            os.assigned_driver_id,
-            d.user_id as driverUserId
-          FROM order_steps os
-          INNER JOIN order_step_statuses oss ON os.status_id = oss.id
-          LEFT JOIN drivers d ON os.assigned_driver_id = d.id
-          WHERE os.order_id = ? AND (os.assigned_driver_id IS NULL OR d.user_id = ?)
-          ORDER BY os.step_order`,
-          [order.orderId, userId]
+        const [ds]: any = await pool.query(
+          `SELECT id FROM drivers WHERE user_id = ?`,
+          [userId]
         );
-        steps = driverSteps;
-      } else {
-        const [allSteps]: any = await pool.query(
-          `SELECT 
-            os.id as stepId,
-            os.step_type,
-            os.step_order,
-            os.address,
-            os.contact_name,
-            os.contact_phone,
-            os.notes,
-            os.package_qty,
-            os.code as stepCode,
-            oss.id as statusId,
-            oss.name as statusName,
-            oss.display_order as statusOrder
-          FROM order_steps os
-          INNER JOIN order_step_statuses oss ON os.status_id = oss.id
-          WHERE os.order_id = ?
-          ORDER BY os.step_order`,
-          [order.orderId]
-        );
-        steps = allSteps;
+        if (ds.length > 0) {
+          const driverId = ds[0].id;
+          driverSteps = allSteps.filter((s: any) => s.assigned_driver_id === driverId || s.assigned_driver_id === null);
+        }
       }
 
       const [tracking]: any = await pool.query(
@@ -100,6 +87,7 @@ export async function GET(request: Request) {
         type: 'order',
         order,
         steps,
+        driverSteps,
         tracking
       });
     }

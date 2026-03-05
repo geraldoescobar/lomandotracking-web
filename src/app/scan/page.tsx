@@ -20,6 +20,7 @@ interface Step {
   statusName: string;
   statusOrder: number;
   assigned_driver_id?: number;
+  driverName?: string;
 }
 
 interface Order {
@@ -40,6 +41,9 @@ interface ScanResult {
   type: 'order' | 'step';
   order?: Order;
   step?: any;
+  steps?: Step[];
+  driverSteps?: Step[];
+  tracking?: any[];
 }
 
 export default function ScanPage() {
@@ -201,6 +205,12 @@ export default function ScanPage() {
     return 'bg-green-100 text-green-800';
   }
 
+  function canDriverActOnStep(step: Step): boolean {
+    if (user?.role !== 'driver') return true;
+    if (!result?.driverSteps) return false;
+    return result.driverSteps.some(ds => ds.stepId === step.stepId);
+  }
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
@@ -278,7 +288,7 @@ export default function ScanPage() {
                 </span>
               </div>
 
-              {user?.role === 'driver' && (result.order.statusId === 1 || result.order.statusId === 2) && (
+              {user?.role === 'driver' && (result.order.statusId === 1 || result.order.statusId === 2 || result.order.statusId === 3) && (
                 <button
                   onClick={startDelivery}
                   disabled={updating}
@@ -288,19 +298,22 @@ export default function ScanPage() {
                 </button>
               )}
 
-              {result.order.steps && result.order.steps.length > 0 && (
+              {result.steps && result.steps.length > 0 && (
                 <div className="mt-4">
                   <h3 className="font-bold text-gray-800 mb-3">
                     {user?.role === 'driver' ? 'Mis Destinos' : 'Destinos'}
                   </h3>
                   <div className="space-y-3">
-                    {result.order.steps.map((step) => (
+                    {result.steps.map((step) => (
                       <div key={step.stepId} className="border border-gray-200 rounded-xl p-3">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium capitalize text-gray-800">{step.step_type}</span>
                             {step.stepCode && (
                               <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded font-mono">{step.stepCode}</span>
+                            )}
+                            {step.driverName && (
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">🚚 {step.driverName}</span>
                             )}
                           </div>
                           <span className={`text-xs px-2 py-1 rounded ${getStatusColor(step.statusOrder)}`}>
@@ -312,7 +325,7 @@ export default function ScanPage() {
                           <p className="text-sm text-gray-500">📞 {step.contact_name} - {step.contact_phone}</p>
                         )}
                         
-                        {user?.role === 'driver' && step.statusId < 5 && (
+                        {(user?.role === 'driver' || user?.role === 'manager') && step.statusId < 5 && canDriverActOnStep(step) && (
                           <div className="mt-3 pt-2 border-t flex gap-2">
                             {step.statusId === 1 && (
                               <button
@@ -442,7 +455,7 @@ export default function ScanPage() {
               </button>
               <button
                 onClick={() => {
-                  const step = result?.order?.steps?.find(s => s.statusId < 5);
+                  const step = result?.steps?.find(s => s.statusId < 5);
                   if (step) submitStepUpdate(step.stepId, 5);
                 }}
                 disabled={!receiverName || !receiverDocument}
