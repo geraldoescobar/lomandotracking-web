@@ -16,11 +16,13 @@ interface Address {
 }
 
 interface OriginStep {
-  address: string;
+  street: string;
+  number: string;
+  apartment: string;
+  city: string;
   contactName: string;
   contactPhone: string;
   notes: string;
-  packageQty: number;
   selectedAddressId?: number;
   saveAddress: boolean;
   addressName: string;
@@ -43,11 +45,13 @@ export default function NewOrderPage() {
   const [showNewAddress, setShowNewAddress] = useState(false);
   
   const [originStep, setOriginStep] = useState<OriginStep>({
-    address: '',
+    street: '',
+    number: '',
+    apartment: '',
+    city: '',
     contactName: '',
     contactPhone: '',
     notes: '',
-    packageQty: 1,
     selectedAddressId: undefined,
     saveAddress: false,
     addressName: ''
@@ -99,7 +103,9 @@ export default function NewOrderPage() {
   async function handleSubmit() {
     setError('');
     
-    if (!originStep.address || !originStep.contactName || !originStep.contactPhone) {
+    const fullAddress = [originStep.street, originStep.number, originStep.apartment, originStep.city].filter(Boolean).join(', ');
+    
+    if (!originStep.street || !originStep.city || !originStep.contactName || !originStep.contactPhone) {
       setError('Completá los datos del origen');
       return;
     }
@@ -112,6 +118,11 @@ export default function NewOrderPage() {
 
     setLoading(true);
     try {
+      const originWithAddress = {
+        ...originStep,
+        address: fullAddress
+      };
+      
       const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,7 +132,7 @@ export default function NewOrderPage() {
           description: orderDescription,
           notes: orderNotes,
           type: 'distribution',
-          originStep,
+          originStep: originWithAddress,
           destinationSteps: validDests
         })
       });
@@ -142,15 +153,13 @@ export default function NewOrderPage() {
   function handleAddressSelect(addressId: number) {
     const addr = addresses.find(a => a.id === addressId);
     if (addr) {
-      let fullAddress = addr.street;
-      if (addr.number) fullAddress += ` ${addr.number}`;
-      if (addr.apartment) fullAddress += `, ${addr.apartment}`;
-      fullAddress += `, ${addr.city}`;
-      
       setOriginStep({
         ...originStep,
         selectedAddressId: addressId,
-        address: fullAddress,
+        street: addr.street,
+        number: addr.number || '',
+        apartment: addr.apartment || '',
+        city: addr.city,
         addressName: addr.notes || addr.street
       });
     }
@@ -208,8 +217,8 @@ export default function NewOrderPage() {
                 <label className="block text-sm font-medium text-gray-600 mb-1">Calle</label>
                 <input
                   type="text"
-                  value={originStep.address.split(',')[0] || ''}
-                  onChange={(e) => setOriginStep({...originStep, address: e.target.value})}
+                  value={originStep.street}
+                  onChange={(e) => setOriginStep({...originStep, street: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
                   placeholder="Av. Principal"
                 />
@@ -219,31 +228,31 @@ export default function NewOrderPage() {
                   <label className="block text-sm font-medium text-gray-600 mb-1">Número</label>
                   <input
                     type="text"
-                    value={originStep.address.split(',')[1] || ''}
-                    onChange={(e) => setOriginStep({...originStep, address: `${originStep.address.split(',')[0]}, ${e.target.value}`})}
+                    value={originStep.number}
+                    onChange={(e) => setOriginStep({...originStep, number: e.target.value})}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
                     placeholder="123"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Apto</label>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Apto/Oficina</label>
                   <input
                     type="text"
-                    value={originStep.address.split(',')[2] || ''}
-                    onChange={(e) => setOriginStep({...originStep, address: `${originStep.address.split(',')[0]}, ${originStep.address.split(',')[1]}, ${e.target.value}`})}
+                    value={originStep.apartment}
+                    onChange={(e) => setOriginStep({...originStep, apartment: e.target.value})}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
                     placeholder="Apto 4"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Ciudad</label>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Ciudad/Barrio</label>
                 <input
                   type="text"
-                  value={originStep.address.split(',')[3] || ''}
-                  onChange={(e) => setOriginStep({...originStep, address: `${originStep.address.split(',')[0]}, ${originStep.address.split(',')[1]}, ${originStep.address.split(',')[2]}, ${e.target.value}`})}
+                  value={originStep.city}
+                  onChange={(e) => setOriginStep({...originStep, city: e.target.value})}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Montevideo"
+                  placeholder="Montevideo, Pocitos"
                 />
               </div>
               <div>
@@ -292,26 +301,16 @@ export default function NewOrderPage() {
               />
             </div>
           </div>
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
-            <input
-              type="text"
-              value={originStep.notes}
-              onChange={(e) => setOriginStep({...originStep, notes: e.target.value})}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-              placeholder="Horario de retiro, etc."
-            />
-          </div>
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-gray-600 mb-1">Paquetes a retirar</label>
-            <input
-              type="number"
-              min="1"
-              value={originStep.packageQty}
-              onChange={(e) => setOriginStep({...originStep, packageQty: parseInt(e.target.value) || 1})}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-            />
-          </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
+              <input
+                type="text"
+                value={originStep.notes}
+                onChange={(e) => setOriginStep({...originStep, notes: e.target.value})}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                placeholder="Horario de retiro, etc."
+              />
+            </div>
         </div>
       </div>
 

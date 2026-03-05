@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 function generateOrderCode(lastId: number): string {
-  const num = String(lastId + 1).padStart(12, '0');
-  return `D${num}`;
+  const orderNum = String(lastId + 1).padStart(8, '0');
+  return `D${orderNum}0000`;
 }
 
 function generateStepCode(orderCode: string, stepOrder: number, packageQty: number): string {
-  return `${orderCode.substring(0, 8)}${String(stepOrder * 100 + packageQty).padStart(4, '0')}`;
+  const base = orderCode.substring(0, 9);
+  return `${base}${String(stepOrder * 100 + packageQty).padStart(4, '0')}`;
 }
 
 export async function POST(request: Request) {
@@ -32,18 +33,17 @@ export async function POST(request: Request) {
 
     const orderId = orderResult.insertId;
 
-    const originStepCode = generateStepCode(newOrderCode, 1, originStep.packageQty || 1);
+    const originStepCode = generateStepCode(newOrderCode, 1, 0);
     
     await pool.execute(
       `INSERT INTO order_steps (order_id, step_type, step_order, address, contact_name, contact_phone, notes, package_qty, status_id, code)
-       VALUES (?, 'origin', 1, ?, ?, ?, ?, ?, 1, ?)`,
+       VALUES (?, 'origin', 1, ?, ?, ?, ?, 0, 1, ?)`,
       [
         orderId,
         originStep.address,
         originStep.contactName || '',
         originStep.contactPhone || '',
         originStep.notes || '',
-        originStep.packageQty || 1,
         originStepCode
       ]
     );
