@@ -62,9 +62,9 @@ export async function GET(request: Request) {
         ORDER BY os.step_order`,
         [order.orderId]
       );
-      const steps = allSteps;
+      let steps = allSteps;
+      let driverSteps: any[] = [];
 
-      let driverSteps = [];
       if (user.role === 'driver') {
         const [ds]: any = await pool.query(
           `SELECT id FROM drivers WHERE user_id = ?`,
@@ -73,6 +73,8 @@ export async function GET(request: Request) {
         if (ds.length > 0) {
           const driverId = ds[0].id;
           driverSteps = allSteps.filter((s: any) => s.assigned_driver_id === driverId || s.assigned_driver_id === null);
+          // Driver only sees origin + their assigned steps
+          steps = allSteps.filter((s: any) => s.step_type === 'origin' || s.assigned_driver_id === driverId || s.assigned_driver_id === null);
         }
       }
 

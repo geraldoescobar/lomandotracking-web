@@ -150,13 +150,15 @@ function SeguimientoPage() {
           setError('No se encontró ningún envío con ese código');
         }
       } else {
-        // Public search
+        // Public search (only step codes allowed)
         const res = await fetch(`/api/track/${searchCode.trim()}`);
         if (res.ok) {
           const data = await res.json();
           setPublicResult(data);
         } else {
-          setError('No se encontró ningún envío con ese código');
+          // Could be an order code that requires auth — redirect to login
+          router.push(`/login?redirect=${encodeURIComponent(`/seguimiento?code=${searchCode.trim()}`)}`);
+          return;
         }
       }
     } catch {
@@ -344,6 +346,9 @@ function SeguimientoPage() {
             result={result as OrderResult}
             updating={updating}
             onAction={driverOrderAction}
+            onStepAction={driverStepAction}
+            onDeliver={startDelivery}
+            onReport={startReport}
             getStatusColor={getStatusColor}
           />
         )}
@@ -500,8 +505,13 @@ function PublicStepView({ result, getStatusColor }: { result: PublicStepResult; 
   );
 }
 
-function DriverOrderView({ result, updating, onAction, getStatusColor }: {
-  result: OrderResult; updating: boolean; onAction: (id: number, status: number, label: string) => void; getStatusColor: (n: number) => string;
+function DriverOrderView({ result, updating, onAction, onStepAction, onDeliver, onReport, getStatusColor }: {
+  result: OrderResult; updating: boolean;
+  onAction: (id: number, status: number, label: string) => void;
+  onStepAction: (id: number, status: number, label: string) => void;
+  onDeliver: (id: number) => void;
+  onReport: (id: number) => void;
+  getStatusColor: (n: number) => string;
 }) {
   const { order, steps } = result;
   const destSteps = steps.filter(s => s.step_type !== 'origin');
@@ -544,7 +554,7 @@ function DriverOrderView({ result, updating, onAction, getStatusColor }: {
           )}
           {order.statusId === 3 && (
             <div className="bg-orange-50 text-orange-700 py-3 rounded-xl text-center border border-orange-200 text-sm">
-              🚚 En curso — escaneá el QR de cada destino
+              🚚 En curso — actualiza cada destino abajo
             </div>
           )}
           {order.statusId >= 4 && (
@@ -555,21 +565,50 @@ function DriverOrderView({ result, updating, onAction, getStatusColor }: {
         </div>
       </div>
 
-      {/* Destination list */}
+      {/* Destination list with actions */}
       {destSteps.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-4">
           <h3 className="font-bold text-gray-800 mb-3">Destinos ({destSteps.length})</h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {destSteps.map((step, i) => (
               <div key={step.stepId} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-2">
                   <div>
                     <span className="text-sm font-medium text-gray-800">{i + 1}. {step.address}</span>
                     {step.contact_name && <p className="text-xs text-gray-500">{step.contact_name} - {step.contact_phone}</p>}
                     {step.package_qty > 0 && <p className="text-xs text-sky-600">📦 {step.package_qty} paquete(s)</p>}
+                    {step.notes && <p className="text-xs text-gray-400 italic">{step.notes}</p>}
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(step.statusOrder)}`}>{step.statusName}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${getStatusColor(step.statusOrder)}`}>{step.statusName}</span>
                 </div>
+                {/* Step actions */}
+                {step.statusId < 5 && (
+                  <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                    {(step.statusId === 1 || step.statusId === 2) && (
+                      <button onClick={() => onStepAction(step.stepId, 3, 'En camino')} disabled={updating}
+                        className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                        🚚 En camino
+                      </button>
+                    )}
+                    {step.statusId === 3 && (
+                      <>
+                        <button onClick={() => onDeliver(step.stepId)} disabled={updating}
+                          className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                          Entregar
+                        </button>
+                        <button onClick={() => onReport(step.stepId)} disabled={updating}
+                          className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                          Problema
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {step.statusId >= 5 && (
+                  <div className={`mt-2 pt-2 border-t border-gray-100 text-center text-xs ${step.statusId === 5 ? 'text-green-600' : 'text-red-600'}`}>
+                    {step.statusId === 5 ? 'Entregado' : 'No entregado'}
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -1,176 +1,149 @@
-# Guía de Usuario - Lomando
+# Guia de Usuario - Lomando
 
-## Introducción
+## Iniciar Sesion
 
-Lomando es un sistema de tracking de entregas que permite gestionar pedidos con múltiples destinos. Cada usuario tiene acceso a funcionalidades específicas según su rol.
+1. Ir a la pagina principal (se muestra `/login`)
+2. En el panel derecho, ingresar email y contrasena
+3. Click en "Ingresar"
 
----
-
-## Iniciar Sesión
-
-1. Abrir la aplicación
-2. Ingresar nombre de usuario y contraseña
-3. Seleccionar el rol (si hay múltiples cuentas)
+Si tenes un codigo de paquete, podes consultar su estado desde el panel izquierdo sin necesidad de loguearte.
 
 ---
 
 ## Manager (Administrador)
 
-### Ver Pedidos
-1. Desde la página principal, ver la lista de todos los pedidos
-2. Usar los filtros para buscar por estado (Pendiente, Asignado, En Curso, Completado, Cancelado)
-3. Click en un pedido para ver detalles
+### Dashboard
+- Ve todos los pedidos con filtros por estado
+- Click en un pedido para ver detalle completo
 
-### Crear Nuevo Pedido
-1. Click en "Nuevo Pedido" en el menú
-2. Completar los datos:
-   - **Descripción**: Descripción breve del pedido
-   - **Cliente**: Seleccionar cliente existente o crear nuevo
-   - **Notas**: Observaciones adicionales (opcional)
+### Crear Pedido
+1. Menu → "Nuevo Envio"
+2. Completar datos de origen:
+   - Calle, numero, departamento
+   - Localidad (autocompletado al tipear)
+   - Contacto y telefono
+   - Opcionalmente guardar direccion para uso futuro
 3. Agregar destinos:
-   - **Tipo**: Origin (origen) o Destination (destino)
-   - **Dirección**: Dirección completa
-   - **Contacto**: Nombre y teléfono
-   - **Notas**: Observaciones específicas
-   - **Paquetes**: Cantidad
-4. Click en "Crear Pedido"
+   - Direccion, contacto, telefono, notas
+   - Cantidad de paquetes por destino
+4. Click "Confirmar Pedido"
 
-### Gestionar Pedidos
-- **Cambiar estado del pedido**: En la página de detalle, usar los botones de cambio de estado
-- **Ver historial**: Sección "Historial" muestra todos los cambios
-- **Imprimir hoja de ruta**: Click en el ícono de impresora
+### Detalle del Pedido
+- Ver QR de la orden y de cada paso
+- Imprimir etiquetas (una por paquete, con QR)
+- Imprimir hoja de ruta (con todos los destinos, QR y espacios para firma)
 
-### Gestionar Repartidores
-- Los repartidores se asignan a los pasos directamente
-- Ver qué repartidor tiene cada destino en la lista de pasos
+### Gestionar Clientes
+- Menu → "Clientes"
+- Ver lista de clientes existentes
 
 ---
 
 ## Repartidor (Driver)
 
-### Ver Mis Entregas
-1. Escanear el código QR del pedido o ingresar el código manualmente
-2. En la página de detalle, ver "Mis Destinos" (pasos asignados al repartidor)
-3. Ver estado de cada paso (Pendiente, Asignado, En Viaje, Entregado)
+### Escanear QR
+1. Menu → "Escanear"
+2. Apuntar la camara al QR del pedido o paquete
+3. Se abre automaticamente la pagina de seguimiento con las acciones disponibles
 
-### Actualizar Estado de Entrega
+### Vista de Orden (al escanear QR de pedido)
+1. Ver datos del pedido: codigo, cliente, telefono
+2. Ver direccion de retiro
+3. **Acciones sobre la orden:**
+   - "Confirmar retiro" (si estado = Pendiente)
+   - "Salir a entregar" (si estado = Asignado)
+4. **Acciones sobre cada destino** (sin necesidad de escanear cada QR):
+   - "En camino" → indica que va hacia ese destino
+   - "Entregar" → abre formulario para nombre y CI del receptor
+   - "Problema" → seleccionar motivo y adjuntar foto del domicilio
 
-**Paso 1: Asignarme**
-- Cuando un paso está en estado "Pendiente"
-- Click en "Asignarme"
-- El paso cambia a "Asignado"
+### Vista de Paso (al escanear QR de paquete)
+- Ver datos del destino: direccion, contacto, notas, cantidad de paquetes
+- Mismas acciones: En camino, Entregar, Reportar problema
 
-**Paso 2: En Viaje**
-- Cuando el paso está "Asignado"
-- Click en "En Viaje"
-- El repartidor indica que está en camino
+### Entrega
+1. Click en "Entregar"
+2. Ingresar nombre de quien recibe
+3. Ingresar cedula (CI)
+4. Click "Confirmar"
 
-**Paso 3: Entregado**
-- Cuando el paso está "En Viaje"
-- Click en "Entregado"
-- Se abre modal para ingresar:
-  - Nombre de quien recibe
-  - Documento (C.I.)
-  - Observación (opcional)
-- Click en "Confirmar"
-
-**Paso 4: No Entregado**
-- Si no se puede entregar (ausente, dirección incorrecta, etc.)
-- Click en "No Entregado"
-- El paso se marca con ese estado
-- Se puede agregar observación
-
-### Importante
-- El repartidor ve TODOS los destinos del pedido (para contexto)
-- Solo puede actuar en los destinos que tiene ASIGNADOS
-- Los botones de acción solo aparecen en los pasos asignados
+### Reportar Problema
+1. Click en "Problema"
+2. Seleccionar motivo:
+   - No se encontro al destinatario
+   - Direccion incorrecta
+   - Destinatario rechazo el paquete
+   - Zona inaccesible
+   - Otro
+3. Opcionalmente tomar foto del domicilio
+4. Click "Enviar reporte"
 
 ---
 
 ## Cliente (Customer)
 
-### Rastrear Entrega
-1. Escanear el código QR del paso (no del pedido completo)
-   - El código del paso tiene formato: `D000000060100`
-2. O ingresar el código manualmente en la página de escaneo
-3. Ver el estado actual del destino:
-   - Pendiente: Aún no se ha entregado
-   - Asignado: Un repartidor está asignado
-   - En Viaje: El repartidor está en camino
-   - Entregado: Ya fue entregado
-   - No Entregado: No se pudo entregar
+### Crear Pedido
+1. Menu → "Nuevo Envio"
+2. Se asigna automaticamente como cliente de la orden
+3. Completar origen y destinos
+4. Puede guardar direcciones en su libro de direcciones
 
-### Información Mostrada
-- Código del paso
-- Estado actual
-- Tipo de destino (origen/destino)
-- Dirección
-- Contacto
-- Notas
+### Mis Envios
+- Menu → "Mis Envios"
+- Ver lista de sus pedidos con estado actual
 
----
+### Mis Domicilios
+- Menu → "Mis Domicilios"
+- Administrar direcciones guardadas para reutilizar al crear pedidos
 
-## Códigos QR
-
-### Dónde encontrar los códigos
-
-**Código de Pedido** (para repartidores)
-- Ejemplo: `D000000060000`
-- Muestra todos los destinos del pedido
-
-**Código de Paso** (para clientes)
-- Ejemplo: `D000000060100`, `D000000060200`
-- Cada destino tiene su propio código
-- El cliente escanea el código del paso específico que quiere rastrear
-
-### Formato de Códigos
-- Pedido 6000 → `D000000060000`
-- Paso 1 → `D000000060100`
-- Paso 2 → `D000000060200`
-- Paso 3 → `D000000060300`
+### Rastrear Paquete
+- Desde la pagina de login (sin loguearse) o desde `/seguimiento`
+- Ingresar el codigo del paquete (ej: D000000060200)
+- Ver estado actual, direccion y datos de contacto
 
 ---
 
-## Estados del Pedido
+## Seguimiento Publico (sin login)
 
-| Estado | Descripción |
-|--------|-------------|
-| Pendiente | Pedido nuevo, sin asignar |
-| Asignado | Asignado a un repartidor |
-| En Curso | Entrega en proceso |
-| Completado | Todos los destinos entregados |
-| Cancelado | Pedido cancelado |
+Cualquier persona puede consultar el estado de un paquete:
 
-## Estados del Destino
+1. Escanear el QR del paquete con la camara del telefono → se abre la pagina de seguimiento
+2. O ir a la pagina de login e ingresar el codigo manualmente
 
-| Estado | Descripción |
-|--------|-------------|
-| Pendiente | Sin asignar |
-| Asignado | Asignado a repartidor |
-| En Viaje | Repartidor en camino |
-| Entregado | Entregado exitosamente |
-| No Entregado | No se pudo entregar |
+**Solo se pueden consultar codigos de paquete (paso), no de orden.**
+Si se intenta consultar un codigo de orden, se redirige al login.
 
 ---
 
-## Solución de Problemas
+## Codigos QR
 
-### No veo los botones de acción
-- Verificar que el paso esté asignado al repartidor actual
-- Los managers ven todos los botones
-- Los repartidores solo ven los botones de sus pasos asignados
+### Donde estan los QR
+- En el detalle del pedido (boton "Ver QR")
+- En las etiquetas impresas (uno por paquete)
+- En la hoja de ruta
 
-### No veo los destinos del pedido
-- Verificar que el código escaneado sea del pedido, no del paso
-- Código de pedido: `D000000060000`
-- Código de paso: `D000000060100`
+### Que contienen
+URL completa de tracking, por ejemplo:
+```
+https://tudominio.com/seguimiento?code=D000000060200
+```
 
-### Error al actualizar estado
-- Verificar conexión a internet
-- Verificar que el usuario tenga permisos
+### Como escanear
+- Desde la app: Menu → "Escanear" → apuntar camara
+- Con camara nativa del telefono: escanear y se abre el navegador directo al seguimiento
 
 ---
 
-## Contacto y Soporte
+## Solucion de Problemas
 
-Para asistencia técnica, contactar al administrador del sistema.
+### No veo botones de accion (Driver)
+- Solo aparecen en los pasos que tenes asignados
+- Verifica que el paso este en el estado correcto para la accion
+
+### No puedo consultar un codigo
+- Codigos de orden requieren login
+- Codigos de paquete funcionan sin login
+
+### La camara no funciona
+- Verificar permisos de camara en el navegador
+- Usar HTTPS (la camara no funciona en HTTP excepto localhost)

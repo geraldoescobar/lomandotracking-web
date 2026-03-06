@@ -1,21 +1,23 @@
 # Lomando - Sistema de Tracking de Entregas
 
-## Descripción del Proyecto
+## Descripcion del Proyecto
 
-**Lomando** es una aplicación web de seguimiento de entregas diseñada para gestionar pedidos con múltiples destinos. Permite a diferentes roles de usuario (Manager, Driver, Customer) interactuar con pedidos y entregas de manera eficiente.
+**Lomando** es una aplicacion web de seguimiento de entregas diseñada para gestionar pedidos con multiples destinos. Permite a diferentes roles de usuario (Manager, Driver, Customer) interactuar con pedidos y entregas de manera eficiente.
 
-El proyecto surge como una solución independiente para evitar dependencias con GeneXus GAM, utilizando una base de datos MySQL separada (`lomando_app`).
+El proyecto utiliza una base de datos MySQL separada (`lomando_app`) y es independiente de cualquier sistema externo.
 
 ---
 
-## Características Principales
+## Caracteristicas Principales
 
-- **Gestión de Pedidos**: Creación de pedidos con origen y múltiples destinos
-- **Escaneo QR**: Seguimiento mediante códigos QR escaneables
-- **Flujo de Trabajo de Repartidor**: Asignación de pedidos, actualización de estado por paso
-- **Tracking para Cliente**: Los clientes pueden rastrear sus entregas escaneando códigos de paso
-- **Interfaz Responsive**: Diseño adaptable para móvil y escritorio
-- **Impresión de Hojas de Ruta**: Generación de documentos imprimibles para repartidores
+- **Gestion de Pedidos**: Creacion de pedidos con origen y multiples destinos
+- **Sistema QR**: Generacion de codigos QR con URL completa para tracking
+- **Impresion**: Etiquetas con QR por paquete y hojas de ruta para repartidores
+- **Seguimiento publico**: Cualquier persona puede consultar el estado de un paquete con su codigo
+- **Flujo de repartidor**: Confirmar retiro, iniciar entrega, entregar con datos del receptor, reportar problemas con foto
+- **Direcciones guardadas**: Libro de direcciones por cliente con autocompletado de localidades
+- **Interfaz responsive**: Diseño mobile-first con navegacion adaptada por rol
+- **PWA**: Instalable como app en dispositivos moviles
 
 ---
 
@@ -23,106 +25,128 @@ El proyecto surge como una solución independiente para evitar dependencias con 
 
 ### Manager (Administrador)
 - Ve todos los pedidos y destinos
-- Puede crear nuevos pedidos
-- Puede cambiar el estado de cualquier pedido o paso
+- Crea nuevos pedidos seleccionando cliente
+- Cambia el estado de cualquier pedido o paso
+- Gestiona clientes y sus direcciones
+- Imprime etiquetas y hojas de ruta
 - Acceso completo a todas las funcionalidades
 
 ### Repartidor (Driver)
-- Ve únicamente los pasos asignados a él
-- Puede actualizar el estado de sus pasos asignados
-- Ve todos los pasos del pedido (para contexto), pero solo actúa en los propios
+- Ve solo los pasos que tiene asignados (+ origen para contexto)
+- Confirma retiro, inicia entrega
+- Entrega con nombre y CI del receptor
+- Reporta problemas con motivo y foto
+- Puede accionar desde la vista de orden o escaneando el QR de cada paso
 
 ### Cliente (Customer)
-- Puede rastrear entregas escaneando códigos de paso
-- Ve solo el estado actual del paso escaneado
-- No puede modificar estados
+- Crea sus propias ordenes (se auto-asigna como cliente)
+- Consulta estado de sus envios
+- Guarda direcciones frecuentes en su libro de direcciones
+- Puede rastrear un paquete con su codigo de paso
+
+### Anonimo (sin login)
+- Solo puede consultar el estado de un paquete individual (codigo de step)
+- Los codigos de orden requieren autenticacion
+- Si escanea un QR de orden, se le redirige al login
 
 ---
 
-## Códigos y Formatos
+## Codigos y Formatos
 
-### Código de Pedido
-```
-D000000060000
-```
-- Formato: `D` + 11 dígitos
-- Ejemplo: D000000060000, D000000060001
+### Codigo de Pedido
+- Formato: `D` + 11 digitos secuenciales
+- Ejemplo: `D000000060000`
 
-### Código de Paso/Destino
+### Codigo de Paso/Paquete
+- Formato: Codigo de pedido base + (step_order x 100)
+- Paso 1: `D000000060100`
+- Paso 2: `D000000060200`
+
+### QR Codes
+Los codigos QR contienen la URL completa de tracking:
 ```
-D000000060100
-D000000060200
-D000000060300
+https://tudominio.com/seguimiento?code=D000000060200
 ```
-- Formato: Código de pedido + (número de paso × 100)
-- Paso 1: D000000060100
-- Paso 2: D000000060200
-- Paso 3: D000000060300
+Esto permite que cualquier camara nativa abra directamente la pagina de seguimiento.
 
 ---
 
 ## Estados de Pedido
 
-| ID | Nombre | Orden Display | Descripción |
-|----|--------|---------------|-------------|
+| ID | Nombre | Orden | Descripcion |
+|----|--------|-------|-------------|
 | 1 | Pendiente | 1 | Pedido creado, sin asignar |
-| 2 | Asignado | 2 | Pedido asignado a un repartidor |
-| 3 | En Curso | 3 | Pedido en proceso de entrega |
+| 2 | Asignado | 2 | Retiro confirmado por repartidor |
+| 3 | En Curso | 3 | Repartidor salio a entregar |
 | 4 | Completado | 4 | Todos los pasos entregados |
-| 5 | Cancelado | 6 | Pedido cancelado |
+| 5 | Completado parcial | 5 | Todos los pasos finalizados pero no todos entregados |
 
----
+## Estados de Paso
 
-## Estados de Paso (Order Step)
-
-| ID | Nombre | Orden Display | Descripción |
-|----|--------|---------------|-------------|
-| 1 | Pendiente | 1 | Paso sin asignar |
-| 2 | Asignado | 2 | Asignado a un repartidor |
-| 3 | En Viaje | 3 | Repartidor en camino al destino |
-| 5 | Entregado | 4 | Entregado exitosamente |
-| 6 | No Entregado | 5 | No se pudo entregar |
+| ID | Nombre | Orden | Descripcion |
+|----|--------|-------|-------------|
+| 1 | Pendiente | 1 | Sin asignar |
+| 2 | Asignado | 2 | Asignado a repartidor |
+| 3 | En Viaje | 3 | Repartidor en camino |
+| 5 | Entregado | 4 | Entregado con datos del receptor |
+| 6 | No Entregado | 5 | No se pudo entregar (con motivo y foto opcional) |
 
 ---
 
 ## Flujo de Trabajo
 
-### Creación de Pedido (Manager)
-1. Acceder a "Nuevo Pedido"
-2. Ingresar descripción del pedido
-3. Seleccionar cliente
-4. Agregar destino(s) con:
-   - Tipo (origin/destination)
-   - Dirección
-   - Nombre de contacto
-   - Teléfono
-   - Notas
-   - Cantidad de paquetes
+### Creacion de Pedido
+1. Manager o Customer accede a "Nuevo Envio"
+2. Completa datos de origen (calle, numero, depto, localidad con autocompletado)
+3. Opcionalmente guarda la direccion en el libro de direcciones
+4. Agrega uno o mas destinos con direccion, contacto y cantidad de paquetes
+5. Confirma el pedido
 
 ### Proceso de Entrega (Driver)
-1. Escanear código QR del pedido o ingresar código manualmente
-2. Ver todos los destinos del pedido
-3. Para cada paso asignado:
-   - Click "Asignarme" (si estado = Pendiente) → cambia a Asignado
-   - Click "En Viaje" (si estado = Asignado) → cambia a En Viaje
-   - Click "Entregado" (si estado = En Viaje) → requiere nombre y documento del receptor
-   - Click "No Entregado" (si estado = En Viaje) → marca como no entregado
+1. Escanea QR del pedido o busca por codigo en `/seguimiento`
+2. Confirma retiro (orden pasa a "Asignado")
+3. Sale a entregar (orden pasa a "En Curso")
+4. Para cada destino puede:
+   - Marcar "En camino" (paso a estado 3)
+   - "Entregar" → ingresa nombre y CI del receptor (paso a estado 5)
+   - "Reportar problema" → selecciona motivo, adjunta foto (paso a estado 6)
+5. Acciones disponibles tanto escaneando el QR de cada paso como desde la vista de orden
 
-### Seguimiento (Customer)
-1. Escanear código QR del paso (no del pedido)
-2. Ver estado actual del paso
-3. Ver información del destino
+### Seguimiento Publico
+1. Cualquier persona escanea el QR del paquete (codigo de paso)
+2. Ve el estado actual del paquete, direccion y datos de contacto
+3. Si intenta consultar un codigo de orden, se redirige al login
 
 ---
 
-## Stack Tecnológico
+## Paginas de la Aplicacion
+
+| Ruta | Descripcion | Acceso |
+|------|-------------|--------|
+| `/login` | Login + tracking publico | Publico |
+| `/` | Dashboard | Manager, Driver, Customer |
+| `/scan` | Camara QR → redirige a `/seguimiento` | Todos (logueado) |
+| `/seguimiento` | Detalle de envio/paquete con acciones por rol | Todos |
+| `/orders` | Lista de pedidos | Manager, Customer |
+| `/orders/new` | Crear nuevo pedido | Manager, Customer |
+| `/orders/[id]` | Detalle del pedido con QR e impresion | Manager, Customer |
+| `/customers` | Lista de clientes | Manager |
+| `/addresses` | Libro de direcciones | Customer |
+| `/profile` | Perfil del usuario | Customer |
+
+---
+
+## Stack Tecnologico
 
 - **Frontend**: Next.js 15.1.6, React 19, Tailwind CSS 4
 - **Backend**: Next.js API Routes
-- **Base de Datos**: MySQL (MariaDB)
-- **Escaneo QR**: html5-qrcode
+- **Base de Datos**: MySQL (mysql2)
+- **Autenticacion**: JWT (jsonwebtoken) + bcrypt
+- **Validacion**: Zod 4
+- **QR Generation**: qrcode (toDataURL)
+- **QR Scanning**: html5-qrcode
 - **PWA**: next-pwa
-- **Autenticación**: Custom (localStorage)
+- **Upload**: FormData + fs (public/uploads/)
 
 ---
 
@@ -130,216 +154,110 @@ D000000060300
 
 ### Tablas Principales
 
-```sql
--- Usuarios (integración con sistema externo)
-users
-├── id (GUID)
-├── username
-├── role (manager/driver/customer)
-├── email
-└── active
-
--- Repartidores
-drivers
-├── id (INT, AUTO_INCREMENT)
-├── user_id (GUID, FK a users.id)
-├── name
-├── phone
-└── active
-
--- Clientes
-customers
-├── id (INT, AUTO_INCREMENT)
-├── user_id (GUID, FK a users.id) -- puede ser null
-├── name
-├── lastname
-├── phone
-├── email
-└── created_at
-
--- Pedidos
-orders
-├── id (INT, AUTO_INCREMENT)
-├── code (VARCHAR, único)
-├── description
-├── customer_id (INT, FK a customers.id)
-├── status_id (INT)
-├── notes
-├── type
-├── created_at
-└── updated_at
-
--- Pasos del Pedido
-order_steps
-├── id (INT, AUTO_INCREMENT)
-├── order_id (INT, FK a orders.id)
-├── step_type (origin/destination)
-├── step_order (INT)
-├── address
-├── contact_name
-├── contact_phone
-├── notes
-├── package_qty (INT)
-├── code (VARCHAR, único)
-├── status_id (INT)
-├── assigned_driver_id (INT, FK a drivers.id)
-└── created_at
-
--- Estados de Pedido
-order_statuses
-├── id (INT)
-├── name (VARCHAR)
-├── display_order (INT)
-└── active (BOOLEAN)
-
--- Estados de Paso
-order_step_statuses
-├── id (INT)
-├── name (VARCHAR)
-├── display_order (INT)
-└── active (BOOLEAN)
-
--- Historial de Tracking
-order_tracking
-├── id (INT, AUTO_INCREMENT)
-├── order_id (INT, FK a orders.id)
-├── step_id (INT, FK a order_steps.id, nullable)
-├── from_status_id (INT)
-├── to_status_id (INT)
-├── observation
-├── receiver_name
-├── receiver_document
-├── user_id (GUID)
-└── created_at
+```
+users (id GUID, username, email, password_hash, role, name, active)
+drivers (id INT, user_id GUID, name, phone, active)
+customers (id GUID, user_id GUID, name, lastname, phone, email)
+orders (id INT, code VARCHAR, description, customer_id, status_id, notes, type)
+order_steps (id INT, order_id, step_type, step_order, address, contact_name, contact_phone, notes, package_qty, code, status_id, assigned_driver_id)
+order_statuses (id, name, display_order, active)
+order_step_statuses (id, name, display_order, active)
+order_tracking (id, order_id, step_id, from_status_id, to_status_id, observation, receiver_name, receiver_document, photo_url, created_at, created_by)
+address_book (id, customer_id, name, street, number, apartment, city, notes, latitude, longitude)
+departments (id, name, is_active) -- 19 departamentos de Uruguay
+localities (id, name, department_id, is_active) -- barrios/localidades
 ```
 
 ---
 
 ## API Endpoints
 
-### Autenticación
+### Autenticacion
 ```
-POST /api/auth/login
-Body: { username, password }
-Response: { id, username, role, name }
+POST /api/auth/login    { email, password } → { token, user }
 ```
 
 ### Pedidos
 ```
-GET    /api/orders
-GET    /api/orders/[id]
-POST   /api/orders/create
-PUT    /api/orders/[id]/status
-GET    /api/orders/[id]/tracking
+GET    /api/orders                     Lista de pedidos (filtrado por rol)
+GET    /api/orders/[id]                Detalle del pedido
+POST   /api/orders/create              Crear pedido
+PUT    /api/orders/[id]/status         Cambiar estado del pedido
+GET    /api/orders/[id]/tracking       Historial de tracking
 ```
 
 ### Pasos
 ```
-PUT /api/steps/[id]/status
-Body: { statusId, userId, observation, receiverName, receiverDocument }
+PUT /api/steps/[id]/status    { statusId, observation, receiverName, receiverDocument, photoUrl }
 ```
 
-### Escaneo
+### Escaneo (autenticado)
 ```
-GET /api/scan?code=XXX&role=XXX&userId=XXX
-Response: { type: 'order'|'step', order, steps[], driverSteps[], tracking }
+GET /api/scan?code=XXX    → { type: 'order'|'step', ... }
 ```
 
-### Seguimiento Público
+### Tracking publico (solo step codes)
 ```
-GET /api/track/[code]
+GET /api/track/[code]     → { type: 'step', stepCode, statusName, address, ... }
+```
+
+### Upload
+```
+POST /api/upload    FormData { photo: File } → { url: '/uploads/filename.jpg' }
+```
+
+### Localidades
+```
+GET  /api/localities?search=xxx&departmentId=x
+POST /api/localities    { name, departmentId } (solo manager)
+```
+
+### Departamentos
+```
+GET /api/departments
+```
+
+### Clientes
+```
+GET /api/customers
 ```
 
 ### Direcciones
 ```
-GET /api/addresses?customerId=XXX
+GET /api/addresses?customerId=xxx
 ```
 
 ---
 
-## Páginas de la Aplicación
+## Variables de Entorno (.env.local)
 
-| Ruta | Descripción | Acceso |
-|------|-------------|--------|
-| `/` | Dashboard - Lista de pedidos | Manager, Driver |
-| `/login` | Login de usuario | Público |
-| `/scan` | Escaneo QR y búsqueda | Todos |
-| `/track` | Seguimiento público | Público |
-| `/orders/new` | Crear nuevo pedido | Manager |
-| `/orders/[id]` | Detalle del pedido | Manager, Driver |
-| `/customers` | Lista de clientes | Manager |
-
----
-
-## Instalación y Configuración
-
-### Requisitos
-- Node.js 18+
-- MySQL/MariaDB
-- npm
-
-### Variables de Entorno
 ```env
-DB_HOST=localhost
+DB_HOST=172.19.160.1          # WSL gateway IP (o localhost si MySQL esta local)
 DB_USER=root
 DB_PASSWORD=password
 DB_NAME=lomando_app
+JWT_SECRET=tu_secreto_jwt
+NEXT_PUBLIC_BASE_URL=https://tudominio.com   # Opcional, para URLs en QR codes
 ```
 
-### Comandos
+---
+
+## Instalacion
+
 ```bash
-# Instalación de dependencias
 npm install
-
-# Desarrollo
-npm run dev
-
-# Producción
-npm run build
-npm start
-
-# Lint
-npm run lint
+npm run dev          # Desarrollo
+npm run build        # Build produccion
+npm start            # Start produccion
+npx tsc --noEmit     # Verificar tipos
 ```
 
 ---
 
 ## Notas de Desarrollo
 
-### Problemas Conocidos y Soluciones
-
-1. **Error de Turbopack en Next.js 16**: Se downgradeó a Next.js 15.1.6
-2. **Códigos de Driver**: El `user_id` del usuario no equivale al `id` de la tabla `drivers`. Los pasos usan `assigned_driver_id` que referencia `drivers.id`
-3. **Filtro de Pasos para Repartidor**: El repartidor ve todos los pasos del pedido para contexto, pero solo puede actuar en los pasos donde `assigned_driver_id` coincide con su ID de driver
-
-### Ejemplos de Uso
-
-#### Escanear Pedido
-- Código: `D000000060000`
-- Muestra: Cabecera del pedido + lista de todos los destinos
-
-#### Escanear Paso (Cliente)
-- Código: `D000000060100`
-- Muestra: Solo el estado de ese destino específico
-
-#### Actualizar Estado de Paso
-- Pendiente (1) → Asignado (2): Repartidor se asigna al paso
-- Asignado (2) → En Viaje (3): Repartidor inicia entrega
-- En Viaje (3) → Entregado (5): Requiere nombre y documento del receptor
-- En Viaje (3) → No Entregado (6): Solo observación
-
----
-
-## Historial de Versiones
-
-### v1.0.0 (Actual)
-- Creación de pedidos con múltiples destinos
-- Escaneo QR para pedidos y pasos
-- Flujo completo de entrega para repartidores
-- Seguimiento público para clientes
-- Dashboard con filtros de estado
-- Impresión de hojas de ruta
-
----
-
-*Documentación generada automáticamente del proyecto Lomando*
+- **Cache del dev server**: despues de cambios en API routes o libs compartidas, a veces hay que hacer `rm -rf .next` y reiniciar
+- **IDs de Driver**: `user.id` (GUID) != `driver.id` (INT autoincremental). Los pasos usan `assigned_driver_id` que referencia `drivers.id`
+- **Zod 4**: usar `error` en vez de `required_error`, y `issues` en vez de `errors`
+- **authFetch**: detecta FormData y no setea Content-Type (para que el browser ponga el boundary correcto)
+- **useSearchParams**: requiere Suspense boundary en Next.js 15

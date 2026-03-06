@@ -8,47 +8,8 @@ export async function GET(
   try {
     const { code } = await params;
 
-    // Try as order code first
-    const [orders]: any = await pool.execute(
-      `SELECT
-        o.id as orderId,
-        o.code as orderCode,
-        o.description,
-        os.name as statusName,
-        os.display_order as statusOrder,
-        o.created_at,
-        c.name as customerName,
-        c.lastname as customerLastname
-      FROM orders o
-      INNER JOIN customers c ON o.customer_id = c.id
-      INNER JOIN order_statuses os ON o.status_id = os.id
-      WHERE o.code = ?`,
-      [code]
-    );
-
-    if (orders && orders.length > 0) {
-      const order = orders[0];
-      const [steps]: any = await pool.execute(
-        `SELECT
-          os.id as stepId,
-          os.step_type,
-          os.step_order,
-          os.address,
-          os.contact_name,
-          os.contact_phone,
-          oss.name as statusName,
-          oss.display_order as statusOrder
-        FROM order_steps os
-        INNER JOIN order_step_statuses oss ON os.status_id = oss.id
-        WHERE os.order_id = ?
-        ORDER BY os.step_order`,
-        [order.orderId]
-      );
-      order.steps = steps;
-      return NextResponse.json({ type: 'order', ...order });
-    }
-
-    // Try as step code
+    // Public tracking only allows step codes (individual packages).
+    // Order-level detail requires authentication.
     const [steps]: any = await pool.execute(
       `SELECT
         s.id as stepId,

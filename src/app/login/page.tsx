@@ -1,12 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
-export default function LoginPage() {
+export default function LoginPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-500">Cargando...</p></div>}>
+      <LoginPage />
+    </Suspense>
+  );
+}
+
+function LoginPage() {
   const { login, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
 
   // Tracking state
   const [trackCode, setTrackCode] = useState('');
@@ -19,7 +29,7 @@ export default function LoginPage() {
 
   // If already logged in, redirect
   if (user) {
-    router.push('/');
+    router.push(redirectTo || '/');
     return null;
   }
 
@@ -36,7 +46,7 @@ export default function LoginPage() {
 
     const success = await login(email, password);
     if (success) {
-      router.push('/');
+      router.push(redirectTo || '/');
     } else {
       setLoginError('Credenciales invalidas');
     }
@@ -49,7 +59,7 @@ export default function LoginPage() {
       <div className="bg-gradient-to-r from-sky-500 to-sky-400 p-6 pb-10">
         <div className="text-center max-w-5xl mx-auto">
           <h1 className="text-2xl font-bold text-white">Lomando</h1>
-          <p className="text-white/80 text-sm mt-1">Sistema de seguimiento de envíos</p>
+          <p className="text-white/80 text-sm mt-1">Sistema de seguimiento de envios</p>
         </div>
       </div>
 
@@ -58,15 +68,15 @@ export default function LoginPage() {
 
           {/* Tracking section */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Seguimiento de envío</h2>
-            <p className="text-sm text-gray-500 mb-4">Ingresá el código de tu envío o paquete para ver su estado</p>
+            <h2 className="text-lg font-bold text-gray-800 mb-1">Seguimiento de envio</h2>
+            <p className="text-sm text-gray-500 mb-4">Ingresa el codigo de tu paquete para ver su estado</p>
 
             <form onSubmit={handleTrack} className="space-y-3">
               <input
                 type="text"
                 value={trackCode}
                 onChange={(e) => setTrackCode(e.target.value.toUpperCase())}
-                placeholder="Codigo (ej: D000000010200)"
+                placeholder="Codigo de paquete (ej: D000000010200)"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-sky-500 focus:bg-white font-mono"
               />
               <button
@@ -82,7 +92,13 @@ export default function LoginPage() {
           {/* Login section */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <h2 className="text-lg font-bold text-gray-800 mb-1">Acceso al sistema</h2>
-            <p className="text-sm text-gray-500 mb-4">Ingresá con tu cuenta para gestionar envíos</p>
+            <p className="text-sm text-gray-500 mb-4">Ingresa con tu cuenta para gestionar envios</p>
+
+            {redirectTo && (
+              <div className="bg-sky-50 border border-sky-200 text-sky-700 px-4 py-3 rounded-lg text-sm mb-3">
+                Inicia sesion para ver el detalle del envio
+              </div>
+            )}
 
             <form onSubmit={handleLogin} className="space-y-3">
               {loginError && (
@@ -104,13 +120,13 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Contraseña</label>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Contrasena</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
-                  placeholder="••••••••"
+                  placeholder="********"
                   required
                 />
               </div>
@@ -128,7 +144,7 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center py-6">
-          <p className="text-xs text-gray-400">Lomando — Sistema de seguimiento de envíos</p>
+          <p className="text-xs text-gray-400">Lomando — Sistema de seguimiento de envios</p>
         </div>
       </div>
     </div>
