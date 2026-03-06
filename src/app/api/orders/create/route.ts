@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest, authorizeRoles } from '@/lib/auth';
+import { createOrderSchema, getValidationError } from '@/lib/validation';
 
 function generateOrderCode(lastId: number): string {
   const orderNum = String(lastId + 1).padStart(8, '0');
@@ -13,11 +15,24 @@ function generateStepCode(orderCode: string, stepOrder: number, packageQty: numb
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { customerId, userId, description, notes, type, originStep, destinationSteps } = body;
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
 
-    if (!customerId || !originStep || !destinationSteps || destinationSteps.length === 0) {
-      return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+    const roleCheck = authorizeRoles(authResult, 'manager', 'customer');
+    if (roleCheck) return roleCheck;
+
+    const body = await request.json();
+    const parsed = createOrderSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
+    }
+
+    const { description, notes, type, originStep, destinationSteps } = parsed.data;
+    const customerId = authResult.role === 'customer' ? authResult.userId : parsed.data.customerId;
+
+    if (!customerId) {
+      return NextResponse.json({ error: 'Cliente requerido' }, { status: 400 });
     }
 
     const [lastOrder]: any = await pool.execute(
@@ -28,22 +43,22 @@ export async function POST(request: Request) {
     const [orderResult]: any = await pool.execute(
       `INSERT INTO orders (code, description, customer_id, type, status_id, notes, created_by)
        VALUES (?, ?, ?, ?, 1, ?, ?)`,
-      [newOrderCode, description || '', customerId, type || 'distribution', notes || '', userId || null]
+      [newOrderCode, description, customerId, type, notes, authResult.userId]
     );
 
     const orderId = orderResult.insertId;
 
     const originStepCode = generateStepCode(newOrderCode, 1, 0);
-    
+
     await pool.execute(
       `INSERT INTO order_steps (order_id, step_type, step_order, address, contact_name, contact_phone, notes, package_qty, status_id, code)
        VALUES (?, 'origin', 1, ?, ?, ?, ?, 0, 1, ?)`,
       [
         orderId,
         originStep.address,
-        originStep.contactName || '',
-        originStep.contactPhone || '',
-        originStep.notes || '',
+        originStep.contactName,
+        originStep.contactPhone,
+        originStep.notes,
         originStepCode
       ]
     );
@@ -51,8 +66,8 @@ export async function POST(request: Request) {
     for (let i = 0; i < destinationSteps.length; i++) {
       const dest = destinationSteps[i];
       const stepOrder = i + 2;
-      const stepCode = generateStepCode(newOrderCode, stepOrder, dest.packageQty || 1);
-      
+      const stepCode = generateStepCode(newOrderCode, stepOrder, dest.packageQty);
+
       await pool.execute(
         `INSERT INTO order_steps (order_id, step_type, step_order, address, contact_name, contact_phone, notes, package_qty, status_id, code)
          VALUES (?, 'destination', ?, ?, ?, ?, ?, ?, 1, ?)`,
@@ -60,19 +75,39 @@ export async function POST(request: Request) {
           orderId,
           stepOrder,
           dest.address,
-          dest.contactName || '',
-          dest.contactPhone || '',
-          dest.notes || '',
-          dest.packageQty || 1,
+          dest.contactName,
+          dest.contactPhone,
+          dest.notes,
+          dest.packageQty,
           stepCode
         ]
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      orderId, 
-      orderCode: newOrderCode 
+    // Save origin address if requested
+    if (originStep.saveAddress && originStep.street && originStep.city) {
+      try {
+        await pool.execute(
+          `INSERT INTO address_book (customer_id, street, number, apartment, city, notes)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            customerId,
+            originStep.street,
+            originStep.number || '',
+            originStep.apartment || '',
+            originStep.city,
+            originStep.addressName || ''
+          ]
+        );
+      } catch (addrErr) {
+        console.error('Error saving address (non-fatal):', addrErr);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      orderId,
+      orderCode: newOrderCode
     });
   } catch (error) {
     console.error('Error creating order:', error);

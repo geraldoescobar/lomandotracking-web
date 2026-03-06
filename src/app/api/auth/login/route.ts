@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import pool from '@/lib/db';
+import { signToken } from '@/lib/auth';
+import { loginSchema, getValidationError } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const parsed = loginSchema.safeParse(body);
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
     }
 
+    const { email, password } = parsed.data;
+
     const [users]: any = await pool.execute(
-      'SELECT id, email, name, lastname, phone, role FROM users WHERE email = ? AND password_hash = ? AND is_active = TRUE',
-      [email, password]
+      'SELECT id, email, name, lastname, phone, role, password_hash FROM users WHERE email = ? AND is_active = TRUE',
+      [email]
     );
 
     if (!users || users.length === 0) {
@@ -19,6 +25,29 @@ export async function POST(request: Request) {
     }
 
     const user = users[0];
+
+    // Support both bcrypt hashes and legacy plain text passwords
+    let passwordValid = false;
+    if (user.password_hash.startsWith('$2')) {
+      passwordValid = await bcrypt.compare(password, user.password_hash);
+    } else {
+      // Legacy: plain text comparison (migrate on successful login)
+      passwordValid = password === user.password_hash;
+      if (passwordValid) {
+        const hashed = await bcrypt.hash(password, 10);
+        await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashed, user.id]);
+      }
+    }
+
+    if (!passwordValid) {
+      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
 
     let profile = null;
     if (user.role === 'driver') {
@@ -40,6 +69,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
+      token,
       user: {
         id: user.id,
         email: user.email,

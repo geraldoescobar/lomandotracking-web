@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest } from '@/lib/auth';
+import { createAddressSchema, getValidationError } from '@/lib/validation';
 
 export async function GET(request: Request) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customerId');
 
@@ -11,8 +16,8 @@ export async function GET(request: Request) {
     }
 
     const [rows] = await pool.execute(
-      `SELECT id, street, number, apartment, city, notes, is_favorite, latitude, longitude 
-       FROM address_book 
+      `SELECT id, street, number, apartment, city, notes, is_favorite, latitude, longitude
+       FROM address_book
        WHERE customer_id = ?
        ORDER BY is_favorite DESC, created_at DESC`,
       [customerId]
@@ -27,12 +32,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { customerId, street, number, apartment, city, notes, latitude, longitude, saveAddress } = body;
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
 
-    if (!customerId || !street || !city) {
-      return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+    const body = await request.json();
+    const parsed = createAddressSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
     }
+
+    const { customerId, street, number, apartment, city, notes, latitude, longitude, saveAddress } = parsed.data;
 
     let addressId = null;
 

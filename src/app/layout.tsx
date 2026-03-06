@@ -14,11 +14,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import type { Viewport } from "next";
+
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Lomando Tracking",
   description: "Tracking de pedidos Lomando",
   manifest: "/manifest.json",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -31,7 +41,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50`}>
         <AuthProvider>
           <NavBar />
-          <main className="max-w-md mx-auto min-h-screen pb-20 pt-16">
+          <main className="max-w-5xl mx-auto min-h-screen pb-20 md:pb-4 pt-16">
             {children}
           </main>
         </AuthProvider>

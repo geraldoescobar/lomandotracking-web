@@ -1,19 +1,22 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const user = authResult;
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
-    const userRole = searchParams.get('role');
-    const userId = searchParams.get('userId');
 
     if (!code) {
       return NextResponse.json({ error: 'Código requerido' }, { status: 400 });
     }
 
     const [orders]: any = await pool.execute(
-      `SELECT 
+      `SELECT
         o.id as orderId,
         o.code as orderCode,
         o.description,
@@ -35,9 +38,9 @@ export async function GET(request: Request) {
 
     if (orders && orders.length > 0) {
       const order = orders[0];
-      
+
       const [allSteps]: any = await pool.query(
-        `SELECT 
+        `SELECT
           os.id as stepId,
           os.step_type,
           os.step_order,
@@ -62,10 +65,10 @@ export async function GET(request: Request) {
       const steps = allSteps;
 
       let driverSteps = [];
-      if (userRole === 'driver') {
+      if (user.role === 'driver') {
         const [ds]: any = await pool.query(
           `SELECT id FROM drivers WHERE user_id = ?`,
-          [userId]
+          [user.userId]
         );
         if (ds.length > 0) {
           const driverId = ds[0].id;
@@ -93,7 +96,7 @@ export async function GET(request: Request) {
     }
 
     const [steps]: any = await pool.execute(
-      `SELECT 
+      `SELECT
         os.id as stepId,
         os.order_id,
         os.step_type,

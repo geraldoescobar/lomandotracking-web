@@ -54,7 +54,7 @@ interface Order {
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -67,7 +67,7 @@ export default function OrderDetailPage() {
 
   async function fetchOrder() {
     try {
-      const res = await fetch(`/api/orders/${params.id}?userId=${user?.id}&role=${user?.role}`);
+      const res = await authFetch(`/api/orders/${params.id}`);
       if (res.ok) {
         const data = await res.json();
         setOrder(data);
@@ -83,13 +83,11 @@ export default function OrderDetailPage() {
     
     setUpdating(true);
     try {
-      await fetch(`/api/orders/${params.id}/status`, {
+      await authFetch(`/api/orders/${params.id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          statusId: newStatusId, 
-          userId: user?.id,
-          observation 
+        body: JSON.stringify({
+          statusId: newStatusId,
+          observation
         }),
       });
       fetchOrder();
@@ -104,12 +102,10 @@ export default function OrderDetailPage() {
     
     setUpdating(true);
     try {
-      await fetch(`/api/orders/${params.id}/status`, {
+      await authFetch(`/api/orders/${params.id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          statusId: 3, 
-          userId: user?.id,
+        body: JSON.stringify({
+          statusId: 3,
           observation: 'Iniciado al escanear código de orden'
         }),
       });

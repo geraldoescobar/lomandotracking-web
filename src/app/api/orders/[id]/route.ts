@@ -1,66 +1,41 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { authenticateRequest } from '@/lib/auth';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const user = authResult;
     const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const userRole = searchParams.get('role');
-    
-    let orderQuery = '';
-    const orderParams: any[] = [id];
 
-    if (userRole === 'driver') {
-      orderQuery = `
-        SELECT 
-          o.id as orderId,
-          o.code as orderCode,
-          o.description,
-          o.type,
-          o.status_id,
-          o.notes,
-          o.created_at,
-          os.name as statusName,
-          os.display_order as statusOrder,
-          c.id as customerId,
-          c.name as customerName,
-          c.lastname as customerLastname,
-          c.phone as customerPhone,
-          c.email as customerEmail
-        FROM orders o
-        INNER JOIN customers c ON o.customer_id = c.id
-        INNER JOIN order_statuses os ON o.status_id = os.id
-        WHERE o.id = ?
-      `;
-    } else {
-      orderQuery = `
-        SELECT 
-          o.id as orderId,
-          o.code as orderCode,
-          o.description,
-          o.type,
-          o.status_id,
-          o.notes,
-          o.created_at,
-          os.name as statusName,
-          os.display_order as statusOrder,
-          c.id as customerId,
-          c.name as customerName,
-          c.lastname as customerLastname,
-          c.phone as customerPhone,
-          c.email as customerEmail
-        FROM orders o
-        INNER JOIN customers c ON o.customer_id = c.id
-        INNER JOIN order_statuses os ON o.status_id = os.id
-        WHERE o.id = ?
-      `;
-    }
+    const orderQuery = `
+      SELECT
+        o.id as orderId,
+        o.code as orderCode,
+        o.description,
+        o.type,
+        o.status_id,
+        o.notes,
+        o.created_at,
+        os.name as statusName,
+        os.display_order as statusOrder,
+        c.id as customerId,
+        c.name as customerName,
+        c.lastname as customerLastname,
+        c.phone as customerPhone,
+        c.email as customerEmail
+      FROM orders o
+      INNER JOIN customers c ON o.customer_id = c.id
+      INNER JOIN order_statuses os ON o.status_id = os.id
+      WHERE o.id = ?
+    `;
 
-    const [orderRows]: any = await pool.query(orderQuery, orderParams);
+    const [orderRows]: any = await pool.query(orderQuery, [id]);
 
     if (!orderRows || orderRows.length === 0) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -71,9 +46,9 @@ export async function GET(
     let stepsQuery = '';
     const stepsParams: any[] = [id];
 
-    if (userRole === 'driver') {
+    if (user.role === 'driver') {
       stepsQuery = `
-        SELECT 
+        SELECT
           os.id as stepId,
           os.step_type,
           os.step_order,
@@ -97,10 +72,10 @@ export async function GET(
         )
         ORDER BY os.step_order
       `;
-      stepsParams.push(userId);
+      stepsParams.push(user.userId);
     } else {
       stepsQuery = `
-        SELECT 
+        SELECT
           os.id as stepId,
           os.step_type,
           os.step_order,
@@ -128,7 +103,7 @@ export async function GET(
     order.steps = steps;
 
     const [tracking]: any = await pool.query(
-      `SELECT 
+      `SELECT
         ot.id,
         ot.observation,
         ot.receiver_name,

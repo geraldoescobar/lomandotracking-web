@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
 
 interface Address {
   id: number;
@@ -13,6 +12,20 @@ interface Address {
   city: string;
   notes: string;
   is_favorite: boolean;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  lastname: string;
+  email: string;
+}
+
+interface Locality {
+  id: number;
+  name: string;
+  departmentId: number;
+  departmentName: string;
 }
 
 interface OriginStep {
@@ -30,61 +43,159 @@ interface OriginStep {
 
 interface DestinationStep {
   id: number;
-  address: string;
+  street: string;
+  number: string;
+  apartment: string;
+  city: string;
   contactName: string;
   contactPhone: string;
   notes: string;
   packageQty: number;
 }
 
+function LocalityInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const { authFetch } = useAuth();
+  const [suggestions, setSuggestions] = useState<Locality[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleChange(val: string) {
+    setInputValue(val);
+    onChange(val);
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (val.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await authFetch(`/api/localities?search=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        setSuggestions(Array.isArray(data) ? data : []);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  }
+
+  function selectSuggestion(loc: Locality) {
+    const display = `${loc.name}, ${loc.departmentName}`;
+    setInputValue(display);
+    onChange(display);
+    setShowSuggestions(false);
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+        className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
+        placeholder="Escribí para buscar..."
+      />
+      {showSuggestions && suggestions.length > 0 && (
+        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map((loc) => (
+            <li
+              key={loc.id}
+              onClick={() => selectSuggestion(loc)}
+              className="px-4 py-2 hover:bg-sky-50 cursor-pointer text-sm"
+            >
+              <span className="font-medium">{loc.name}</span>
+              <span className="text-gray-400 ml-1">- {loc.departmentName}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function NewOrderPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [loading, setLoading] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [showNewAddress, setShowNewAddress] = useState(false);
-  
+
   const [originStep, setOriginStep] = useState<OriginStep>({
-    street: '',
-    number: '',
-    apartment: '',
-    city: '',
-    contactName: '',
-    contactPhone: '',
-    notes: '',
-    selectedAddressId: undefined,
-    saveAddress: false,
-    addressName: ''
+    street: '', number: '', apartment: '', city: '',
+    contactName: '', contactPhone: '', notes: '',
+    selectedAddressId: undefined, saveAddress: false, addressName: ''
   });
-  
+
   const [destinationSteps, setDestinationSteps] = useState<DestinationStep[]>([
-    { id: 1, address: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
+    { id: 1, street: '', number: '', apartment: '', city: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
   ]);
-  
+
   const [orderNotes, setOrderNotes] = useState('');
   const [orderDescription, setOrderDescription] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user && user.role === 'customer') {
-      fetchAddresses();
+    if (!user) return;
+    if (user.role === 'customer') {
+      fetchAddresses(user.id);
+    }
+    if (user.role === 'manager') {
+      fetchCustomers();
     }
   }, [user]);
 
-  async function fetchAddresses() {
+  useEffect(() => {
+    if (user?.role === 'manager' && selectedCustomerId) {
+      fetchAddresses(selectedCustomerId);
+    }
+  }, [selectedCustomerId]);
+
+  async function fetchAddresses(customerId: string) {
     try {
-      const res = await fetch(`/api/addresses?customerId=${user?.id}`);
+      const res = await authFetch(`/api/addresses?customerId=${customerId}`);
       const data = await res.json();
-      setAddresses(data);
+      setAddresses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching addresses:', err);
+    }
+  }
+
+  async function fetchCustomers() {
+    try {
+      const res = await authFetch('/api/customers');
+      const data = await res.json();
+      setCustomers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching customers:', err);
     }
   }
 
   function addDestination() {
     setDestinationSteps([
       ...destinationSteps,
-      { id: Date.now(), address: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
+      { id: Date.now(), street: '', number: '', apartment: '', city: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
     ]);
   }
 
@@ -95,50 +206,57 @@ export default function NewOrderPage() {
   }
 
   function updateDestination(id: number, field: string, value: any) {
-    setDestinationSteps(destinationSteps.map(d => 
+    setDestinationSteps(destinationSteps.map(d =>
       d.id === id ? { ...d, [field]: value } : d
     ));
   }
 
   async function handleSubmit() {
     setError('');
-    
+
+    if (user?.role === 'manager' && !selectedCustomerId) {
+      setError('Seleccioná un cliente');
+      return;
+    }
+
     const fullAddress = [originStep.street, originStep.number, originStep.apartment, originStep.city].filter(Boolean).join(', ');
-    
+
     if (!originStep.street || !originStep.city || !originStep.contactName || !originStep.contactPhone) {
       setError('Completá los datos del origen');
       return;
     }
 
-    const validDests = destinationSteps.filter(d => d.address && d.contactName);
-    if (validDests.length === 0) {
-      setError('Agregá al menos un destino');
+    const incompleteDest = destinationSteps.find(d => !d.street || !d.city || !d.contactName);
+    if (incompleteDest) {
+      const missing = [];
+      if (!incompleteDest.street) missing.push('calle');
+      if (!incompleteDest.city) missing.push('localidad');
+      if (!incompleteDest.contactName) missing.push('contacto');
+      setError(`Completá los datos del destino: falta ${missing.join(', ')}`);
       return;
     }
 
+    const validDests = destinationSteps.map(d => ({
+      ...d,
+      address: [d.street, d.number, d.apartment, d.city].filter(Boolean).join(', ')
+    }));
+
     setLoading(true);
     try {
-      const originWithAddress = {
-        ...originStep,
-        address: fullAddress
-      };
-      
-      const res = await fetch('/api/orders/create', {
+      const res = await authFetch('/api/orders/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: user?.id,
-          userId: user?.id,
+          customerId: user?.role === 'manager' ? selectedCustomerId : user?.id,
           description: orderDescription,
           notes: orderNotes,
           type: 'distribution',
-          originStep: originWithAddress,
+          originStep: { ...originStep, address: fullAddress },
           destinationSteps: validDests
         })
       });
 
       const data = await res.json();
-      
+
       if (data.success) {
         router.push(`/orders/${data.orderId}`);
       } else {
@@ -182,9 +300,41 @@ export default function NewOrderPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+      {/* Customer selector for manager */}
+      {user.role === 'manager' && (
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
+          <h2 className="font-bold text-gray-800 mb-3">👤 Cliente</h2>
+          <select
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
+          >
+            <option value="">Seleccionar cliente...</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.lastname} ({c.email})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Descripcion */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
+        <h2 className="font-bold text-gray-800 mb-3">📋 Descripción</h2>
+        <input
+          type="text"
+          value={orderDescription}
+          onChange={(e) => setOrderDescription(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
+          placeholder="Breve descripción del envío"
+        />
+      </div>
+
+      {/* Origin */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
         <h2 className="font-bold text-gray-800 mb-3">📍 Origen (Retiro)</h2>
-        
+
         {!showNewAddress ? (
           <>
             <label className="block text-sm font-medium text-gray-600 mb-1">Dirección de retiro</label>
@@ -202,7 +352,7 @@ export default function NewOrderPage() {
                 ))}
               </select>
             ) : null}
-            
+
             <button
               onClick={() => setShowNewAddress(true)}
               className="text-sky-600 text-sm font-medium"
@@ -211,77 +361,78 @@ export default function NewOrderPage() {
             </button>
           </>
         ) : (
-          <>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Calle</label>
-                <input
-                  type="text"
-                  value={originStep.street}
-                  onChange={(e) => setOriginStep({...originStep, street: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Av. Principal"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Número</label>
-                  <input
-                    type="text"
-                    value={originStep.number}
-                    onChange={(e) => setOriginStep({...originStep, number: e.target.value})}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                    placeholder="123"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Apto/Oficina</label>
-                  <input
-                    type="text"
-                    value={originStep.apartment}
-                    onChange={(e) => setOriginStep({...originStep, apartment: e.target.value})}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                    placeholder="Apto 4"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Ciudad/Barrio</label>
-                <input
-                  type="text"
-                  value={originStep.city}
-                  onChange={(e) => setOriginStep({...originStep, city: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Montevideo, Pocitos"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Nombre para guardar</label>
-                <input
-                  type="text"
-                  value={originStep.addressName}
-                  onChange={(e) => setOriginStep({...originStep, addressName: e.target.value})}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Mi casa"
-                />
-              </div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={originStep.saveAddress}
-                  onChange={(e) => setOriginStep({...originStep, saveAddress: e.target.checked})}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-600">Guardar esta dirección</span>
-              </label>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Calle *</label>
+              <input
+                type="text"
+                value={originStep.street}
+                onChange={(e) => setOriginStep({...originStep, street: e.target.value})}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                placeholder="Av. Principal"
+              />
             </div>
-          </>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Número</label>
+                <input
+                  type="text"
+                  value={originStep.number}
+                  onChange={(e) => setOriginStep({...originStep, number: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                  placeholder="123"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Apto/Oficina</label>
+                <input
+                  type="text"
+                  value={originStep.apartment}
+                  onChange={(e) => setOriginStep({...originStep, apartment: e.target.value})}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                  placeholder="Apto 4"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Localidad *</label>
+              <LocalityInput
+                value={originStep.city}
+                onChange={(val) => setOriginStep({...originStep, city: val})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Nombre para guardar</label>
+              <input
+                type="text"
+                value={originStep.addressName}
+                onChange={(e) => setOriginStep({...originStep, addressName: e.target.value})}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                placeholder="Mi casa"
+              />
+            </div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={originStep.saveAddress}
+                onChange={(e) => setOriginStep({...originStep, saveAddress: e.target.checked})}
+                className="rounded"
+              />
+              <span className="text-sm text-gray-600">Guardar esta dirección</span>
+            </label>
+            <button
+              onClick={() => setShowNewAddress(false)}
+              className="text-gray-500 text-sm"
+            >
+              ← Volver a direcciones guardadas
+            </button>
+          </div>
         )}
 
         <div className="mt-4 pt-4 border-t">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Contacto</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Contacto *</label>
               <input
                 type="text"
                 value={originStep.contactName}
@@ -291,7 +442,7 @@ export default function NewOrderPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Teléfono</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Teléfono *</label>
               <input
                 type="text"
                 value={originStep.contactPhone}
@@ -301,26 +452,24 @@ export default function NewOrderPage() {
               />
             </div>
           </div>
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
-              <input
-                type="text"
-                value={originStep.notes}
-                onChange={(e) => setOriginStep({...originStep, notes: e.target.value})}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                placeholder="Horario de retiro, etc."
-              />
-            </div>
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-600 mb-1">Observaciones</label>
+            <input
+              type="text"
+              value={originStep.notes}
+              onChange={(e) => setOriginStep({...originStep, notes: e.target.value})}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+              placeholder="Horario de retiro, etc."
+            />
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+      {/* Destinations */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-bold text-gray-800">📦 Destinos</h2>
-          <button
-            onClick={addDestination}
-            className="text-sky-600 text-sm font-medium"
-          >
+          <button onClick={addDestination} className="text-sky-600 text-sm font-medium">
             + Agregar
           </button>
         </div>
@@ -334,52 +483,97 @@ export default function NewOrderPage() {
               )}
             </div>
             <div className="space-y-2">
-              <input
-                type="text"
-                value={dest.address}
-                onChange={(e) => updateDestination(dest.id, 'address', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                placeholder="Dirección completa"
-              />
-              <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Calle *</label>
                 <input
                   type="text"
-                  value={dest.contactName}
-                  onChange={(e) => updateDestination(dest.id, 'contactName', e.target.value)}
-                  className="border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Contacto"
-                />
-                <input
-                  type="text"
-                  value={dest.contactPhone}
-                  onChange={(e) => updateDestination(dest.id, 'contactPhone', e.target.value)}
-                  className="border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Teléfono"
+                  value={dest.street}
+                  onChange={(e) => updateDestination(dest.id, 'street', e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                  placeholder="Av. Principal"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={dest.notes}
-                  onChange={(e) => updateDestination(dest.id, 'notes', e.target.value)}
-                  className="border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Observaciones"
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Número</label>
+                  <input
+                    type="text"
+                    value={dest.number}
+                    onChange={(e) => updateDestination(dest.id, 'number', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Apto/Oficina</label>
+                  <input
+                    type="text"
+                    value={dest.apartment}
+                    onChange={(e) => updateDestination(dest.id, 'apartment', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="Apto 4"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Localidad *</label>
+                <LocalityInput
+                  value={dest.city}
+                  onChange={(val) => updateDestination(dest.id, 'city', val)}
                 />
-                <input
-                  type="number"
-                  min="1"
-                  value={dest.packageQty}
-                  onChange={(e) => updateDestination(dest.id, 'packageQty', parseInt(e.target.value) || 1)}
-                  className="border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Paquetes"
-                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Contacto *</label>
+                  <input
+                    type="text"
+                    value={dest.contactName}
+                    onChange={(e) => updateDestination(dest.id, 'contactName', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="Nombre"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    value={dest.contactPhone}
+                    onChange={(e) => updateDestination(dest.id, 'contactPhone', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="099123456"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
+                  <input
+                    type="text"
+                    value={dest.notes}
+                    onChange={(e) => updateDestination(dest.id, 'notes', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="Timbre, horario, etc."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Cant. paquetes</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={dest.packageQty}
+                    onChange={(e) => updateDestination(dest.id, 'packageQty', parseInt(e.target.value) || 1)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="1"
+                  />
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+      {/* Order notes */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
         <h2 className="font-bold text-gray-800 mb-3">📝 Notas de la orden</h2>
         <textarea
           value={orderNotes}
@@ -395,7 +589,7 @@ export default function NewOrderPage() {
         disabled={loading}
         className="w-full bg-sky-500 text-white py-4 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md"
       >
-        {loading ? 'Creando...' : '✅ Crear Orden'}
+        {loading ? 'Creando...' : 'Crear Orden'}
       </button>
     </div>
   );

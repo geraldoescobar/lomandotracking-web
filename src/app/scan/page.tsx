@@ -48,7 +48,7 @@ interface ScanResult {
 
 export default function ScanPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [code, setCode] = useState('');
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,8 +107,8 @@ export default function ScanPage() {
     setError('');
 
     try {
-      const url = user ? `/api/scan?code=${searchCode.trim()}&role=${user.role}&userId=${user.id}` : `/api/scan?code=${searchCode.trim()}`;
-      const res = await fetch(url);
+      const url = `/api/scan?code=${searchCode.trim()}`;
+      const res = await authFetch(url);
       
       if (res.ok) {
         const data = await res.json();
@@ -134,17 +134,15 @@ export default function ScanPage() {
     
     setUpdating(true);
     try {
-      await fetch(`/api/orders/${result.order.orderId}/status`, {
+      await authFetch(`/api/orders/${result.order.orderId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          statusId: 3, 
-          userId: user?.id,
+        body: JSON.stringify({
+          statusId: 3,
           observation: 'Iniciado al escanear código'
         }),
       });
-      
-      const res = await fetch(`/api/scan?code=${code}&role=${user?.role}&userId=${user?.id}`);
+
+      const res = await authFetch(`/api/scan?code=${code}`);
       const data = await res.json();
       setResult(data);
     } catch (err) {
@@ -165,19 +163,17 @@ export default function ScanPage() {
   async function submitStepUpdate(stepId: number, newStatusId: number) {
     setUpdating(true);
     try {
-      await fetch(`/api/steps/${stepId}/status`, {
+      await authFetch(`/api/steps/${stepId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          statusId: newStatusId, 
-          userId: user?.id,
+        body: JSON.stringify({
+          statusId: newStatusId,
           observation: stepNotes,
           receiverName,
           receiverDocument
         }),
       });
-      
-      const res = await fetch(`/api/scan?code=${code}&role=${user?.role}&userId=${user?.id}`);
+
+      const res = await authFetch(`/api/scan?code=${code}`);
       const data = await res.json();
       setResult(data);
       setShowDeliveryModal(false);
