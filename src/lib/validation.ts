@@ -6,16 +6,21 @@ export const loginSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
-  customerId: z.number({ error: 'Cliente requerido' }),
-  userId: z.string().optional(),
+  customerId: z.string().optional(),
   description: z.string().optional().default(''),
   notes: z.string().optional().default(''),
   type: z.string().optional().default('distribution'),
   originStep: z.object({
     address: z.string().min(1, 'Dirección de origen requerida'),
+    street: z.string().optional().default(''),
+    number: z.string().optional().default(''),
+    apartment: z.string().optional().default(''),
+    city: z.string().optional().default(''),
     contactName: z.string().optional().default(''),
     contactPhone: z.string().optional().default(''),
     notes: z.string().optional().default(''),
+    saveAddress: z.boolean().optional().default(false),
+    addressName: z.string().optional().default(''),
   }),
   destinationSteps: z.array(z.object({
     address: z.string().min(1, 'Dirección de destino requerida'),
@@ -41,7 +46,7 @@ export const updateOrderStatusSchema = z.object({
 });
 
 export const createAddressSchema = z.object({
-  customerId: z.number({ error: 'customerId requerido' }),
+  customerId: z.string({ error: 'customerId requerido' }),
   street: z.string().min(1, 'Calle requerida'),
   number: z.string().nullable().optional(),
   apartment: z.string().nullable().optional(),

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const authResult = authenticateRequest(request);
     if (authResult instanceof NextResponse) return authResult;
 
-    const roleCheck = authorizeRoles(authResult, 'manager');
+    const roleCheck = authorizeRoles(authResult, 'manager', 'customer');
     if (roleCheck) return roleCheck;
 
     const body = await request.json();
@@ -28,7 +28,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
     }
 
-    const { customerId, description, notes, type, originStep, destinationSteps } = parsed.data;
+    const { description, notes, type, originStep, destinationSteps } = parsed.data;
+    const customerId = authResult.role === 'customer' ? authResult.userId : parsed.data.customerId;
+
+    if (!customerId) {
+      return NextResponse.json({ error: 'Cliente requerido' }, { status: 400 });
+    }
 
     const [lastOrder]: any = await pool.execute(
       'SELECT MAX(id) as lastId FROM orders'
@@ -77,6 +82,26 @@ export async function POST(request: Request) {
           stepCode
         ]
       );
+    }
+
+    // Save origin address if requested
+    if (originStep.saveAddress && originStep.street && originStep.city) {
+      try {
+        await pool.execute(
+          `INSERT INTO address_book (customer_id, street, number, apartment, city, notes)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            customerId,
+            originStep.street,
+            originStep.number || '',
+            originStep.apartment || '',
+            originStep.city,
+            originStep.addressName || ''
+          ]
+        );
+      } catch (addrErr) {
+        console.error('Error saving address (non-fatal):', addrErr);
+      }
     }
 
     return NextResponse.json({
