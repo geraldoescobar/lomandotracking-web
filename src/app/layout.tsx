@@ -41,7 +41,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50`}>
         <AuthProvider>
           <NavBar />
-          <main className="max-w-md mx-auto min-h-screen pb-20 pt-16">
+          <main className="max-w-5xl mx-auto min-h-screen pb-20 md:pb-4 pt-16">
             {children}
           </main>
         </AuthProvider>

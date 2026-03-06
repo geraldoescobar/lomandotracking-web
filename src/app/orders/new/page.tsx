@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
 
 interface Address {
   id: number;
@@ -30,7 +29,10 @@ interface OriginStep {
 
 interface DestinationStep {
   id: number;
-  address: string;
+  street: string;
+  number: string;
+  apartment: string;
+  city: string;
   contactName: string;
   contactPhone: string;
   notes: string;
@@ -58,7 +60,7 @@ export default function NewOrderPage() {
   });
   
   const [destinationSteps, setDestinationSteps] = useState<DestinationStep[]>([
-    { id: 1, address: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
+    { id: 1, street: '', number: '', apartment: '', city: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
   ]);
   
   const [orderNotes, setOrderNotes] = useState('');
@@ -84,7 +86,7 @@ export default function NewOrderPage() {
   function addDestination() {
     setDestinationSteps([
       ...destinationSteps,
-      { id: Date.now(), address: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
+      { id: Date.now(), street: '', number: '', apartment: '', city: '', contactName: '', contactPhone: '', notes: '', packageQty: 1 }
     ]);
   }
 
@@ -110,7 +112,12 @@ export default function NewOrderPage() {
       return;
     }
 
-    const validDests = destinationSteps.filter(d => d.address && d.contactName);
+    const validDests = destinationSteps
+      .filter(d => d.street && d.city && d.contactName)
+      .map(d => ({
+        ...d,
+        address: [d.street, d.number, d.apartment, d.city].filter(Boolean).join(', ')
+      }));
     if (validDests.length === 0) {
       setError('Agregá al menos un destino');
       return;
@@ -332,20 +339,55 @@ export default function NewOrderPage() {
               )}
             </div>
             <div className="space-y-2">
-              <input
-                type="text"
-                value={dest.address}
-                onChange={(e) => updateDestination(dest.id, 'address', e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                placeholder="Dirección completa"
-              />
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Calle *</label>
+                <input
+                  type="text"
+                  value={dest.street}
+                  onChange={(e) => updateDestination(dest.id, 'street', e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                  placeholder="Av. Principal"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Número</label>
+                  <input
+                    type="text"
+                    value={dest.number}
+                    onChange={(e) => updateDestination(dest.id, 'number', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="123"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Apto/Oficina</label>
+                  <input
+                    type="text"
+                    value={dest.apartment}
+                    onChange={(e) => updateDestination(dest.id, 'apartment', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="Apto 4"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Ciudad *</label>
+                  <input
+                    type="text"
+                    value={dest.city}
+                    onChange={(e) => updateDestination(dest.id, 'city', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
+                    placeholder="Montevideo"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
                   value={dest.contactName}
                   onChange={(e) => updateDestination(dest.id, 'contactName', e.target.value)}
                   className="border border-gray-200 rounded-xl px-4 py-2 bg-gray-50"
-                  placeholder="Contacto"
+                  placeholder="Contacto *"
                 />
                 <input
                   type="text"
