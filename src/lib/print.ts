@@ -1,4 +1,5 @@
 import QRCodeLib from 'qrcode';
+import { getTrackingUrl } from '@/lib/qr-url';
 
 interface PrintStep {
   stepCode: string;
@@ -22,8 +23,9 @@ interface PrintOrder {
   steps: PrintStep[];
 }
 
-async function generateQRDataUrl(text: string, size = 200): Promise<string> {
-  return QRCodeLib.toDataURL(text, { width: size, margin: 1 });
+async function generateQRDataUrl(code: string, size = 200): Promise<string> {
+  const url = getTrackingUrl(code);
+  return QRCodeLib.toDataURL(url, { width: size, margin: 1 });
 }
 
 export async function printLabels(order: PrintOrder) {

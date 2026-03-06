@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import QRCodeLib from 'qrcode';
+import { getTrackingUrl } from '@/lib/qr-url';
 
 interface QRCodeProps {
   value: string;
@@ -13,7 +14,8 @@ export default function QRCode({ value, size = 150, className = '' }: QRCodeProp
   const [dataUrl, setDataUrl] = useState<string>('');
 
   useEffect(() => {
-    QRCodeLib.toDataURL(value, {
+    const url = getTrackingUrl(value);
+    QRCodeLib.toDataURL(url, {
       width: size,
       margin: 1,
       color: { dark: '#000000', light: '#ffffff' },
