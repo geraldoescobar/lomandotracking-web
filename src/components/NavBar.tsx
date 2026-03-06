@@ -144,11 +144,8 @@ export default function NavBar() {
     return (
       <nav className="fixed top-0 left-0 right-0 bg-gradient-to-r from-sky-500 to-sky-400 text-white p-3 z-50 shadow-md">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <Link href="/track" className="text-lg font-bold tracking-tight">
+          <Link href="/login" className="text-lg font-bold tracking-tight">
             Lomando
-          </Link>
-          <Link href="/login" className="text-sm bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors">
-            Ingresar
           </Link>
         </div>
       </nav>

@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface Step {
@@ -81,8 +80,13 @@ export default function ScanPage() {
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           qr.stop();
-          setCode(decodedText.toUpperCase());
-          handleCodeSearch(decodedText.toUpperCase());
+          setScanning(false);
+          // Extract code from URL if scanned a URL-type QR
+          let scannedCode = decodedText.trim().toUpperCase();
+          const match = scannedCode.match(/\/TRACK\/([A-Z0-9]+)/i);
+          if (match) scannedCode = match[1].toUpperCase();
+          setCode(scannedCode);
+          handleCodeSearch(scannedCode);
         },
         () => {}
       );
@@ -129,19 +133,14 @@ export default function ScanPage() {
     await handleCodeSearch(code);
   }
 
-  async function startDelivery() {
-    if (!result?.order) return;
-    
+  async function updateOrderStatus(orderId: number, newStatusId: number) {
     setUpdating(true);
     try {
-      await authFetch(`/api/orders/${result.order.orderId}/status`, {
+      const labels: Record<number, string> = { 2: 'Asignado al escanear QR', 3: 'Iniciado al escanear QR' };
+      await authFetch(`/api/orders/${orderId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({
-          statusId: 3,
-          observation: 'Iniciado al escanear código'
-        }),
+        body: JSON.stringify({ statusId: newStatusId, observation: labels[newStatusId] || '' }),
       });
-
       const res = await authFetch(`/api/scan?code=${code}`);
       const data = await res.json();
       setResult(data);
@@ -149,6 +148,11 @@ export default function ScanPage() {
       console.error(err);
     }
     setUpdating(false);
+  }
+
+  async function startDelivery() {
+    if (!result?.order) return;
+    await updateOrderStatus(result.order.orderId, 3);
   }
 
   async function updateStepStatus(stepId: number, newStatusId: number) {
@@ -210,14 +214,6 @@ export default function ScanPage() {
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 relative">
-          <Image 
-            src="/driverIcon.png" 
-            alt="Driver" 
-            fill
-            className="object-contain"
-          />
-        </div>
         <h1 className="text-xl font-bold text-gray-800">Escanear</h1>
       </div>
 
@@ -284,14 +280,28 @@ export default function ScanPage() {
                 </span>
               </div>
 
-              {user?.role === 'driver' && (result.order.statusId === 1 || result.order.statusId === 2 || result.order.statusId === 3) && (
+              {user?.role === 'driver' && result.order.statusId === 1 && (
                 <button
-                  onClick={startDelivery}
+                  onClick={() => updateOrderStatus(result.order!.orderId, 2)}
                   disabled={updating}
                   className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md mb-4"
                 >
-                  {updating ? 'Actualizando...' : '🚀 Iniciar Entrega'}
+                  {updating ? 'Actualizando...' : '📋 Confirmar Retiro (Asignar)'}
                 </button>
+              )}
+              {user?.role === 'driver' && result.order.statusId === 2 && (
+                <button
+                  onClick={startDelivery}
+                  disabled={updating}
+                  className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 disabled:opacity-50 shadow-md mb-4"
+                >
+                  {updating ? 'Actualizando...' : '🚚 Iniciar Entrega (En Curso)'}
+                </button>
+              )}
+              {user?.role === 'driver' && result.order.statusId === 3 && (
+                <div className="w-full bg-orange-50 text-orange-700 py-3 rounded-xl font-medium text-center mb-4 border border-orange-200">
+                  🚚 Orden en curso — escaneá los QR de cada destino para actualizar
+                </div>
               )}
 
               {result.steps && result.steps.length > 0 && (
@@ -393,6 +403,27 @@ export default function ScanPage() {
                   <p className="text-gray-500 text-sm mt-2">📝 {result.step.notes}</p>
                 )}
               </div>
+
+              {(user?.role === 'driver' || user?.role === 'manager') && result.step.statusId < 5 && (
+                <div className="mt-4 pt-3 border-t flex gap-2">
+                  {result.step.statusId === 1 && (
+                    <button onClick={() => updateStepStatus(result.step.stepId, 2)} disabled={updating}
+                      className="flex-1 bg-sky-500 text-white py-2 rounded-lg text-sm">Asignarme</button>
+                  )}
+                  {result.step.statusId === 2 && (
+                    <button onClick={() => updateStepStatus(result.step.stepId, 3)} disabled={updating}
+                      className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm">🚚 En Viaje</button>
+                  )}
+                  {result.step.statusId === 3 && (
+                    <button onClick={() => updateStepStatus(result.step.stepId, 5)} disabled={updating}
+                      className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm">✅ Entregado</button>
+                  )}
+                  {result.step.statusId < 5 && (
+                    <button onClick={() => updateStepStatus(result.step.stepId, 6)} disabled={updating}
+                      className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm">⚠️ No Entregado</button>
+                  )}
+                </div>
+              )}
 
               {user?.role === 'customer' && (
                 <div className="mt-4 p-3 bg-sky-50 rounded-lg">

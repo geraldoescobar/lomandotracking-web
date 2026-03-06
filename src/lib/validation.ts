@@ -37,6 +37,7 @@ export const updateStepStatusSchema = z.object({
   observation: z.string().optional().default(''),
   receiverName: z.string().optional().default(''),
   receiverDocument: z.string().optional().default(''),
+  photoUrl: z.string().optional().default(''),
 });
 
 export const updateOrderStatusSchema = z.object({

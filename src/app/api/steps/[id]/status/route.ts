@@ -22,7 +22,7 @@ export async function PUT(
       return NextResponse.json({ error: getValidationError(parsed) }, { status: 400 });
     }
 
-    const { statusId, observation, receiverName, receiverDocument } = parsed.data;
+    const { statusId, observation, receiverName, receiverDocument, photoUrl } = parsed.data;
 
     const [currentStep]: any = await pool.execute(
       'SELECT order_id, status_id FROM order_steps WHERE id = ?',
@@ -42,9 +42,9 @@ export async function PUT(
     );
 
     await pool.execute(
-      `INSERT INTO order_tracking (order_id, step_id, from_status_id, to_status_id, observation, receiver_name, receiver_document, created_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
-      [orderId, id, previousStatusId, statusId, observation, receiverName, receiverDocument, authResult.userId]
+      `INSERT INTO order_tracking (order_id, step_id, from_status_id, to_status_id, observation, receiver_name, receiver_document, photo_url, created_at, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+      [orderId, id, previousStatusId, statusId, observation, receiverName, receiverDocument, photoUrl || null, authResult.userId]
     );
 
     const [steps]: any = await pool.query(

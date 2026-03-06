@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image';
+import QRCode from '@/components/QRCode';
+import { printLabels, printRoute } from '@/lib/print';
 
 interface Step {
   stepId: number;
@@ -58,6 +59,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showOrderQR, setShowOrderQR] = useState(false);
 
   useEffect(() => {
     if (params.id && user) {
@@ -80,15 +82,12 @@ export default function OrderDetailPage() {
 
   async function updateOrderStatus(newStatusId: number, observation?: string) {
     if (!confirm('¿Confirmar cambio de estado de la orden?')) return;
-    
+
     setUpdating(true);
     try {
       await authFetch(`/api/orders/${params.id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({
-          statusId: newStatusId,
-          observation
-        }),
+        body: JSON.stringify({ statusId: newStatusId, observation }),
       });
       fetchOrder();
     } catch (error) {
@@ -99,15 +98,12 @@ export default function OrderDetailPage() {
 
   async function startDelivery() {
     if (!confirm('¿Iniciar entrega del pedido? Esto cambiará el estado a "En Curso".')) return;
-    
+
     setUpdating(true);
     try {
       await authFetch(`/api/orders/${params.id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({
-          statusId: 3,
-          observation: 'Iniciado al escanear código de orden'
-        }),
+        body: JSON.stringify({ statusId: 3, observation: 'Iniciado desde detalle de orden' }),
       });
       fetchOrder();
     } catch (error) {
@@ -137,70 +133,17 @@ export default function OrderDetailPage() {
     if (!order) return '';
     if (order.statusId === 1) return 'Iniciar Pedido';
     if (order.statusId === 2) return 'Iniciar Entrega';
-    if (order.statusId === 3) return 'En Curso';
-    if (order.statusId === 4) return 'Completado';
     return '';
   }
 
-  function handlePrint() {
+  async function handlePrintLabels() {
     if (!order) return;
-    
-    const printContent = `
-=======================================
-         HOJA DE RUTA - LOMANDO
-=======================================
+    await printLabels(order);
+  }
 
-ORDEN: ${order.orderCode}
-Fecha: ${new Date().toLocaleDateString('es-UY')}
-=======================================
-
-CLIENTE:
-${order.customerName} ${order.customerLastname}
-Tel: ${order.customerPhone}
-${order.customerEmail || ''}
-
-${order.notes ? `NOTAS: ${order.notes}` : ''}
-
-=======================================
-           DESTINOS
-=======================================
-
-${order.steps?.map((step, i) => `
-${i + 1}. ${step.step_type.toUpperCase()} - Código: ${step.stepCode || 'N/A'}
-   Dirección: ${step.address}
-   Contacto: ${step.contact_name || 'N/A'} - ${step.contact_phone || 'N/A'}
-   Paquetes: ${step.package_qty || 0}
-   Estado: ${step.statusName}
-   ${step.notes ? `Notas: ${step.notes}` : ''}
-`).join('')}
-
-=======================================
-Firma Receptor: _______________________
-DNI Receptor: ________________________
-Hora Entrega: __________________________
-
-=======================================
-      Lomando - Tracking de Pedidos
-=======================================
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Hoja de Ruta - ${order.orderCode}</title>
-            <style>
-              body { font-family: monospace; white-space: pre-wrap; padding: 20px; }
-              @media print { body { padding: 0; } }
-            </style>
-          </head>
-          <body>${printContent}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
+  async function handlePrintRoute() {
+    if (!order) return;
+    await printRoute(order);
   }
 
   if (loading || !user) {
@@ -221,18 +164,28 @@ Hora Entrega: __________________________
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 pb-24">
       <div className="flex justify-between items-center mb-3">
         <button onClick={() => router.back()} className="text-sky-600">← Volver</button>
-        <button 
-          onClick={handlePrint}
-          className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-          title="Imprimir"
-        >
-          <Image src="/ActionPrint.png" alt="Imprimir" width={20} height={20} className="object-contain" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handlePrintLabels}
+            className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"
+            title="Imprimir etiquetas"
+          >
+            🏷️ Etiquetas
+          </button>
+          <button
+            onClick={handlePrintRoute}
+            className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"
+            title="Imprimir hoja de ruta"
+          >
+            🗺️ Ruta
+          </button>
+        </div>
       </div>
-      
+
+      {/* Order header + QR */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div className="flex justify-between items-start mb-3">
           <div>
@@ -244,22 +197,38 @@ Hora Entrega: __________________________
           </span>
         </div>
 
+        {/* Toggle order QR */}
+        <button
+          onClick={() => setShowOrderQR(!showOrderQR)}
+          className="text-sm text-sky-600 font-medium mb-3"
+        >
+          {showOrderQR ? '▲ Ocultar QR' : '▼ Ver QR de la orden'}
+        </button>
+        {showOrderQR && (
+          <div className="flex justify-center py-3 border-t border-b border-gray-100">
+            <div className="text-center">
+              <QRCode value={order.orderCode} size={180} />
+              <p className="text-xs font-mono text-gray-500 mt-1">{order.orderCode}</p>
+            </div>
+          </div>
+        )}
+
         {canStartDelivery() && (
           <button
             onClick={startDelivery}
             disabled={updating}
-            className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md mb-4"
+            className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md mt-3"
           >
             {updating ? 'Actualizando...' : `🚀 ${getStatusButtonText()}`}
           </button>
         )}
 
         {!canStartDelivery() && order.statusId === 3 && (
-          <div className="w-full bg-orange-50 text-orange-700 py-3 rounded-xl font-medium text-center mb-4 border border-orange-200">
+          <div className="w-full bg-orange-50 text-orange-700 py-3 rounded-xl font-medium text-center mt-3 border border-orange-200">
             🚚 Orden en curso
           </div>
         )}
-        
+
         {user.role !== 'driver' && (
           <div className="border-t pt-3 mt-3">
             <h3 className="font-medium mb-2 text-gray-700">Cliente</h3>
@@ -277,44 +246,21 @@ Hora Entrega: __________________________
         )}
       </div>
 
+      {/* Steps with QR */}
       {order.steps && order.steps.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
           <h3 className="font-bold mb-3 text-gray-800">
             {user.role === 'driver' ? 'Mis Destinos' : 'Pasos del pedido'}
           </h3>
           <div className="space-y-3">
-            {order.steps.map((step, index) => (
-              <div key={step.stepId} className="border-l-2 border-sky-300 pl-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium capitalize text-gray-800">{step.step_type}</span>
-                    {step.stepCode && (
-                      <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded font-mono">{step.stepCode}</span>
-                    )}
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(step.statusOrder)}`}>
-                    {step.statusName}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">{step.address}</p>
-                {step.contact_name && (
-                  <p className="text-sm text-gray-500">📞 {step.contact_name} - {step.contact_phone}</p>
-                )}
-                {step.notes && (
-                  <p className="text-sm text-gray-400 italic">{step.notes}</p>
-                )}
-                {step.package_qty > 0 && (
-                  <p className="text-xs text-sky-600 mt-1">📦 {step.package_qty} paquete(s)</p>
-                )}
-                {step.driverName && user.role === 'manager' && (
-                  <p className="text-sm text-sky-600">Driver: {step.driverName}</p>
-                )}
-              </div>
+            {order.steps.map((step) => (
+              <StepCard key={step.stepId} step={step} userRole={user.role} getStatusColor={getStatusColor} />
             ))}
           </div>
         </div>
       )}
 
+      {/* Tracking history */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <h3 className="font-bold mb-3 text-gray-800">Historial</h3>
         {(!order.tracking || order.tracking.length === 0) ? (
@@ -327,9 +273,7 @@ Hora Entrega: __________________________
                   <span className="font-medium text-gray-700">{t.toStatus}</span>
                   <span className="text-gray-400 text-xs">{formatDate(t.created_at)}</span>
                 </div>
-                {t.observation && (
-                  <p className="text-gray-500">{t.observation}</p>
-                )}
+                {t.observation && <p className="text-gray-500">{t.observation}</p>}
                 {t.receiver_name && (
                   <p className="text-gray-400 text-xs">Receptor: {t.receiver_name} ({t.receiver_document})</p>
                 )}
@@ -339,47 +283,79 @@ Hora Entrega: __________________________
         )}
       </div>
 
+      {/* Manager status controls */}
       {user.role === 'manager' && (
         <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
           <h3 className="font-bold mb-3 text-gray-800">Cambiar Estado</h3>
           <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => updateOrderStatus(1)}
-              disabled={updating || order.statusId === 1}
-              className="bg-yellow-500 text-white py-2 rounded-lg disabled:opacity-50"
-            >
-              Pendiente
-            </button>
-            <button
-              onClick={() => updateOrderStatus(2)}
-              disabled={updating || order.statusId === 2}
-              className="bg-sky-500 text-white py-2 rounded-lg disabled:opacity-50"
-            >
-              Asignado
-            </button>
-            <button
-              onClick={() => updateOrderStatus(3)}
-              disabled={updating || order.statusId === 3}
-              className="bg-orange-500 text-white py-2 rounded-lg disabled:opacity-50"
-            >
-              En Curso
-            </button>
-            <button
-              onClick={() => updateOrderStatus(4)}
-              disabled={updating || order.statusId === 4}
-              className="bg-green-500 text-white py-2 rounded-lg disabled:opacity-50"
-            >
-              Completado
-            </button>
-            <button
-              onClick={() => updateOrderStatus(5)}
-              disabled={updating || order.statusId === 5}
-              className="bg-red-500 text-white py-2 rounded-lg disabled:opacity-50 col-span-2"
-            >
-              Cancelar Orden
-            </button>
+            <button onClick={() => updateOrderStatus(1)} disabled={updating || order.statusId === 1}
+              className="bg-yellow-500 text-white py-2 rounded-lg disabled:opacity-50">Pendiente</button>
+            <button onClick={() => updateOrderStatus(2)} disabled={updating || order.statusId === 2}
+              className="bg-sky-500 text-white py-2 rounded-lg disabled:opacity-50">Asignado</button>
+            <button onClick={() => updateOrderStatus(3)} disabled={updating || order.statusId === 3}
+              className="bg-orange-500 text-white py-2 rounded-lg disabled:opacity-50">En Curso</button>
+            <button onClick={() => updateOrderStatus(4)} disabled={updating || order.statusId === 4}
+              className="bg-green-500 text-white py-2 rounded-lg disabled:opacity-50">Completado</button>
+            <button onClick={() => updateOrderStatus(5)} disabled={updating || order.statusId === 5}
+              className="bg-red-500 text-white py-2 rounded-lg disabled:opacity-50 col-span-2">Cancelar Orden</button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function StepCard({ step, userRole, getStatusColor }: { step: Step; userRole: string; getStatusColor: (n: number) => string }) {
+  const [showQR, setShowQR] = useState(false);
+  const isOrigin = step.step_type === 'origin';
+
+  return (
+    <div className="border-l-2 border-sky-300 pl-3">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2">
+          <span className="font-medium capitalize text-gray-800">
+            {isOrigin ? 'Origen' : 'Destino'}
+          </span>
+          {step.stepCode && (
+            <span className="text-xs bg-sky-50 text-sky-600 px-2 py-0.5 rounded font-mono">{step.stepCode}</span>
+          )}
+        </div>
+        <span className={`text-xs px-2 py-1 rounded ${getStatusColor(step.statusOrder)}`}>
+          {step.statusName}
+        </span>
+      </div>
+      <p className="text-sm text-gray-600 mt-1">{step.address}</p>
+      {step.contact_name && (
+        <p className="text-sm text-gray-500">📞 {step.contact_name} - {step.contact_phone}</p>
+      )}
+      {step.notes && (
+        <p className="text-sm text-gray-400 italic">{step.notes}</p>
+      )}
+      {step.package_qty > 0 && (
+        <p className="text-xs text-sky-600 mt-1">📦 {step.package_qty} paquete(s)</p>
+      )}
+      {step.driverName && userRole === 'manager' && (
+        <p className="text-sm text-sky-600">Driver: {step.driverName}</p>
+      )}
+
+      {/* QR toggle for non-origin steps */}
+      {!isOrigin && step.stepCode && (
+        <>
+          <button
+            onClick={() => setShowQR(!showQR)}
+            className="text-xs text-sky-500 mt-1"
+          >
+            {showQR ? '▲ Ocultar QR' : '▼ Ver QR'}
+          </button>
+          {showQR && (
+            <div className="flex justify-center py-2">
+              <div className="text-center">
+                <QRCode value={step.stepCode} size={130} />
+                <p className="text-xs font-mono text-gray-400 mt-1">{step.stepCode}</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
