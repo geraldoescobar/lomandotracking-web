@@ -85,6 +85,7 @@ function getNavItems(role: string): NavItem[] {
         { href: '/orders', label: 'Envios', icon: PackageIcon },
         { href: '/drivers', label: 'Cadetes', icon: TruckIcon },
         { href: '/customers', label: 'Clientes', icon: UsersIcon },
+        { href: '/localities', label: 'Localidades', icon: MapPinIcon },
         { href: '/scan', label: 'Escanear', icon: ScanIcon },
       ];
     case 'driver':
