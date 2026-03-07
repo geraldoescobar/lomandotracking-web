@@ -73,6 +73,7 @@ function LoginPage() {
 
             <form onSubmit={handleTrack} className="space-y-3">
               <input
+                data-testid="track-code-input"
                 type="text"
                 value={trackCode}
                 onChange={(e) => setTrackCode(e.target.value.toUpperCase())}
@@ -80,6 +81,7 @@ function LoginPage() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-sky-500 focus:bg-white font-mono"
               />
               <button
+                data-testid="track-submit"
                 type="submit"
                 disabled={!trackCode.trim()}
                 className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md"
@@ -110,6 +112,7 @@ function LoginPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
                 <input
+                  data-testid="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -122,6 +125,7 @@ function LoginPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Contrasena</label>
                 <input
+                  data-testid="login-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -132,6 +136,7 @@ function LoginPage() {
               </div>
 
               <button
+                data-testid="login-submit"
                 type="submit"
                 disabled={loginLoading}
                 className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 transition shadow-md"

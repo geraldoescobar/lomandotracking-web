@@ -81,7 +81,7 @@ export default function Home() {
     <div className="p-4 space-y-6 pb-8">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 data-testid="welcome-title" className="text-2xl font-bold text-gray-800">
           Bienvenido, {user.name}
         </h1>
         <p className="text-gray-500 mt-1">

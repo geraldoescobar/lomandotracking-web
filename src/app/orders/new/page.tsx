@@ -305,6 +305,7 @@ export default function NewOrderPage() {
         <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
           <h2 className="font-bold text-gray-800 mb-3">👤 Cliente</h2>
           <select
+            data-testid="order-customer-select"
             value={selectedCustomerId}
             onChange={(e) => setSelectedCustomerId(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500"
@@ -323,6 +324,7 @@ export default function NewOrderPage() {
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4 border border-gray-100">
         <h2 className="font-bold text-gray-800 mb-3">📋 Descripción</h2>
         <input
+          data-testid="order-description"
           type="text"
           value={orderDescription}
           onChange={(e) => setOrderDescription(e.target.value)}
@@ -354,6 +356,7 @@ export default function NewOrderPage() {
             ) : null}
 
             <button
+              data-testid="btn-new-address"
               onClick={() => setShowNewAddress(true)}
               className="text-sky-600 text-sm font-medium"
             >
@@ -365,6 +368,7 @@ export default function NewOrderPage() {
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Calle *</label>
               <input
+                data-testid="origin-street"
                 type="text"
                 value={originStep.street}
                 onChange={(e) => setOriginStep({...originStep, street: e.target.value})}
@@ -376,6 +380,7 @@ export default function NewOrderPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Número</label>
                 <input
+                  data-testid="origin-number"
                   type="text"
                   value={originStep.number}
                   onChange={(e) => setOriginStep({...originStep, number: e.target.value})}
@@ -434,6 +439,7 @@ export default function NewOrderPage() {
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Contacto *</label>
               <input
+                data-testid="origin-contact"
                 type="text"
                 value={originStep.contactName}
                 onChange={(e) => setOriginStep({...originStep, contactName: e.target.value})}
@@ -444,6 +450,7 @@ export default function NewOrderPage() {
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Teléfono *</label>
               <input
+                data-testid="origin-phone"
                 type="text"
                 value={originStep.contactPhone}
                 onChange={(e) => setOriginStep({...originStep, contactPhone: e.target.value})}
@@ -475,7 +482,7 @@ export default function NewOrderPage() {
         </div>
 
         {destinationSteps.map((dest, index) => (
-          <div key={dest.id} className="border border-gray-200 rounded-xl p-3 mb-3">
+          <div key={dest.id} data-testid={`destination-${index}`} className="border border-gray-200 rounded-xl p-3 mb-3">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-600">Destino {index + 1}</span>
               {destinationSteps.length > 1 && (
@@ -585,6 +592,7 @@ export default function NewOrderPage() {
       </div>
 
       <button
+        data-testid="btn-create-order"
         onClick={handleSubmit}
         disabled={loading}
         className="w-full bg-sky-500 text-white py-4 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md"

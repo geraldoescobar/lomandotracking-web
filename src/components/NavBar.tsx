@@ -198,6 +198,7 @@ export default function NavBar() {
               <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full capitalize">{user.role}</span>
             </div>
             <button
+              data-testid="btn-logout"
               onClick={handleLogout}
               className="text-sm bg-white/20 px-2 py-1 rounded-full hover:bg-white/30 transition-colors"
             >

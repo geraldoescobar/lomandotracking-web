@@ -189,10 +189,10 @@ export default function OrderDetailPage() {
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <span className="text-2xl font-bold text-sky-600">#{order.orderCode}</span>
+            <span data-testid="order-code" className="text-2xl font-bold text-sky-600">#{order.orderCode}</span>
             <p className="font-medium text-gray-800">{order.description}</p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
+          <span data-testid="order-status" className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.statusOrder)}`}>
             {order.statusName}
           </span>
         </div>
