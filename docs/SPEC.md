@@ -5,25 +5,36 @@
 ```
 Frontend (Next.js 15 + React 19 + Tailwind 4)
   ├── Pages (App Router)
-  │   ├── /login          Login + tracking publico
-  │   ├── /               Dashboard
-  │   ├── /scan           Camara QR → redirect a /seguimiento
-  │   ├── /seguimiento    Vista de envio con acciones por rol
-  │   ├── /orders         CRUD de ordenes
-  │   ├── /customers      Gestion de clientes
-  │   ├── /addresses      Libro de direcciones (customer)
-  │   └── /profile        Perfil (customer)
+  │   ├── /login              Login + tracking publico
+  │   ├── /                   Dashboard
+  │   ├── /scan               Camara QR → redirect a /seguimiento
+  │   ├── /seguimiento        Vista de envio con acciones por rol
+  │   ├── /orders             Lista de ordenes
+  │   ├── /orders/new         Crear orden
+  │   ├── /orders/[id]        Detalle de orden (asignar cadetes)
+  │   ├── /orders/[id]/edit   Editar datos de orden (manager)
+  │   ├── /drivers            CRUD de cadetes (manager)
+  │   ├── /customers          CRUD de clientes (manager)
+  │   ├── /localities         CRUD de localidades (manager)
+  │   ├── /addresses          Libro de direcciones (customer)
+  │   └── /profile            Perfil (customer)
   ├── API Routes
   │   ├── /api/auth/login
-  │   ├── /api/orders, /api/orders/[id], /api/orders/create
-  │   ├── /api/steps/[id]/status
+  │   ├── /api/orders (GET), /api/orders/create (POST)
+  │   ├── /api/orders/[id] (GET, PUT)
+  │   ├── /api/orders/[id]/status (PUT), /api/orders/[id]/tracking (GET)
+  │   ├── /api/steps/[id]/status (PUT)
+  │   ├── /api/steps/[id]/assign (PUT)
+  │   ├── /api/drivers (GET, POST), /api/drivers/[id] (GET, PUT, DELETE)
+  │   ├── /api/customers (GET, POST), /api/customers/[id] (GET, PUT, DELETE)
+  │   ├── /api/localities (GET, POST), /api/localities/[id] (PUT, DELETE)
   │   ├── /api/scan
   │   ├── /api/track/[code]    (publico, solo step codes)
   │   ├── /api/upload
-  │   ├── /api/customers
-  │   ├── /api/addresses
-  │   ├── /api/localities
-  │   └── /api/departments
+  │   ├── /api/addresses (GET, POST), /api/addresses/[id] (PUT, DELETE)
+  │   ├── /api/departments
+  │   ├── /api/profile
+  │   └── /api/status
   ├── Context
   │   └── AuthContext (JWT token, authFetch, user state)
   ├── Components
@@ -82,6 +93,12 @@ El extractor de codigo (`extractCodeFromQR`) parsea:
 - Manager: ve toda la orden con todos los steps
 - Driver: ve la orden pero solo los steps asignados a el (+ origen)
 - Customer: ve la orden y sus steps
+
+### Acciones del manager
+- CRUD de cadetes, clientes y localidades
+- Asignar cadete a destinos de una orden (auto-transiciona orden Pendiente→Asignado)
+- Editar datos de orden y pasos (direccion, contacto, telefono, notas, cant. paquetes)
+- Imprimir etiquetas y hojas de ruta
 
 ### Acciones del driver
 - Sobre orden: Confirmar retiro (1→2), Salir a entregar (2→3)
@@ -153,14 +170,18 @@ Seeded con barrios de Montevideo y localidades de Canelones.
 
 ## Logica de Estado de Orden
 
-Cuando se actualiza un step, la orden se recalcula automaticamente:
+Cuando se actualiza un step, la orden se recalcula automaticamente.
+**Solo se consideran los steps de tipo destino** (se excluye el origen):
 ```
-- Todos los steps entregados (status 5) → orden Completado (4)
-- Todos los steps finalizados (status >= 5) → orden Completado parcial (5)
-- Algun step en viaje (status 3) → orden En Curso (3)
-- Algun step asignado+ (status >= 2) → orden Asignado (2)
-- Sino → orden Pendiente (1)
+- Todos los dest. entregados (status 5)      → orden Completado (4)
+- Todos los dest. finalizados (status >= 5)   → orden Completado parcial (5)
+- Algun dest. en viaje (status 3)             → orden En Curso (3)
+- Algun dest. asignado+ (status >= 2)         → orden Asignado (2)
+- Sino                                        → orden Pendiente (1)
 ```
+
+Asignar un cadete a un destino (via `/api/steps/[id]/assign`) tambien dispara
+la transicion de Pendiente (1) a Asignado (2) si la orden estaba pendiente.
 
 ## Dependencias
 
@@ -174,6 +195,24 @@ Cuando se actualiza un step, la orden se recalcula automaticamente:
   "zod": "^4.3.6",
   "qrcode": "^1.5.4",
   "html5-qrcode": "^2.3.8",
-  "next-pwa": "^5.6.0"
+  "next-pwa": "^5.6.0",
+  "uuid": "^11.1.0"
 }
 ```
+
+## Patrones de Desarrollo
+
+### CRUD Pages
+Las paginas de gestion (drivers, customers, localities) siguen el mismo patron:
+- Lista con busqueda y filtros
+- Modal para crear/editar (reutiliza el mismo formulario)
+- Confirmacion antes de eliminar
+- Soft delete (is_active=0) para entidades con referencias (drivers, localities)
+- Hard delete solo cuando no hay dependencias (customers sin ordenes)
+
+### Creacion de usuarios vinculados
+Al crear un driver se crea tambien un registro en `users` con:
+- `id`: UUID v4
+- `role`: 'driver'
+- `password_hash`: bcrypt del password ingresado
+Al crear un customer se sigue el mismo patron con `role`: 'customer'
