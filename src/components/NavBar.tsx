@@ -62,6 +62,14 @@ function UserIcon({ className }: { className?: string }) {
   );
 }
 
+function TruckIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 1m8-1l2 1m-6-1a2 2 0 104 0m-4 0H5m0 0a2 2 0 104 0m6 0a2 2 0 104 0m-4 0h1m-1 0h-4m4 0h4a1 1 0 001-1v-4a1 1 0 00-1-1h-3l-2-3h-2" />
+    </svg>
+  );
+}
+
 // --- Nav link definitions per role ---
 interface NavItem {
   href: string;
@@ -74,7 +82,8 @@ function getNavItems(role: string): NavItem[] {
     case 'manager':
       return [
         { href: '/', label: 'Inicio', icon: HomeIcon },
-        { href: '/orders', label: 'Mis Envios', icon: PackageIcon },
+        { href: '/orders', label: 'Envios', icon: PackageIcon },
+        { href: '/drivers', label: 'Cadetes', icon: TruckIcon },
         { href: '/customers', label: 'Clientes', icon: UsersIcon },
         { href: '/scan', label: 'Escanear', icon: ScanIcon },
       ];
@@ -104,8 +113,9 @@ function getMobileNavItems(role: string): NavItem[] {
     case 'manager':
       return [
         { href: '/', label: 'Inicio', icon: HomeIcon },
+        { href: '/orders', label: 'Envios', icon: PackageIcon },
+        { href: '/drivers', label: 'Cadetes', icon: TruckIcon },
         { href: '/scan', label: 'Escanear', icon: ScanIcon },
-        { href: '/customers', label: 'Clientes', icon: UsersIcon },
       ];
     case 'driver':
       return [
