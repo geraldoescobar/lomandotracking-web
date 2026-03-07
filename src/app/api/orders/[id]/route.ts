@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { authenticateRequest } from '@/lib/auth';
+import { authenticateRequest, authorizeRoles } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -124,5 +124,100 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching order:', error);
     return NextResponse.json({ error: 'Error fetching order' }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = authenticateRequest(request);
+    if (authResult instanceof NextResponse) return authResult;
+
+    const roleCheck = authorizeRoles(authResult, 'manager');
+    if (roleCheck) return roleCheck;
+
+    const { id } = await params;
+    const body = await request.json();
+    const { description, notes, steps } = body;
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Update order-level fields
+      if (description !== undefined || notes !== undefined) {
+        const fields: string[] = [];
+        const values: any[] = [];
+
+        if (description !== undefined) {
+          fields.push('description = ?');
+          values.push(description);
+        }
+        if (notes !== undefined) {
+          fields.push('notes = ?');
+          values.push(notes);
+        }
+
+        if (fields.length > 0) {
+          values.push(id);
+          await conn.execute(
+            `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`,
+            values
+          );
+        }
+      }
+
+      // Update individual steps
+      if (steps && Array.isArray(steps)) {
+        for (const step of steps) {
+          if (!step.stepId) continue;
+
+          const stepFields: string[] = [];
+          const stepValues: any[] = [];
+
+          if (step.address !== undefined) {
+            stepFields.push('address = ?');
+            stepValues.push(step.address);
+          }
+          if (step.contact_name !== undefined) {
+            stepFields.push('contact_name = ?');
+            stepValues.push(step.contact_name);
+          }
+          if (step.contact_phone !== undefined) {
+            stepFields.push('contact_phone = ?');
+            stepValues.push(step.contact_phone);
+          }
+          if (step.notes !== undefined) {
+            stepFields.push('notes = ?');
+            stepValues.push(step.notes);
+          }
+          if (step.package_qty !== undefined) {
+            stepFields.push('package_qty = ?');
+            stepValues.push(step.package_qty);
+          }
+
+          if (stepFields.length > 0) {
+            stepValues.push(step.stepId);
+            await conn.execute(
+              `UPDATE order_steps SET ${stepFields.join(', ')} WHERE id = ?`,
+              stepValues
+            );
+          }
+        }
+      }
+
+      await conn.commit();
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (error) {
+    console.error('Error updating order:', error);
+    return NextResponse.json({ error: 'Error al actualizar la orden' }, { status: 500 });
   }
 }

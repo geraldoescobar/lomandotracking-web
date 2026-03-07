@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import QRCode from '@/components/QRCode';
 import { printLabels, printRoute } from '@/lib/print';
@@ -200,6 +201,14 @@ export default function OrderDetailPage() {
       <div className="flex justify-between items-center mb-3">
         <button onClick={() => router.back()} className="text-sky-600">← Volver</button>
         <div className="flex gap-2">
+          {user.role === 'manager' && (
+            <Link
+              href={`/orders/${params.id}/edit`}
+              className="text-sm bg-sky-100 text-sky-700 px-3 py-1.5 rounded-lg hover:bg-sky-200 font-medium"
+            >
+              Editar
+            </Link>
+          )}
           <button
             onClick={handlePrintLabels}
             className="text-sm bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"
