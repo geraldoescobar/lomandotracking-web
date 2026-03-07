@@ -6,6 +6,12 @@ import { useAuth } from '@/context/AuthContext';
 import QRCode from '@/components/QRCode';
 import { printLabels, printRoute } from '@/lib/print';
 
+interface Driver {
+  id: number;
+  name: string;
+  phone: string;
+}
+
 interface Step {
   stepId: number;
   step_type: string;
@@ -60,12 +66,38 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showOrderQR, setShowOrderQR] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
 
   useEffect(() => {
     if (params.id && user) {
       fetchOrder();
+      if (user.role === 'manager') fetchDrivers();
     }
   }, [params.id, user]);
+
+  async function fetchDrivers() {
+    try {
+      const res = await authFetch('/api/drivers');
+      if (res.ok) {
+        const data = await res.json();
+        setDrivers(data.filter((d: any) => d.isActive));
+      }
+    } catch {}
+  }
+
+  async function assignDriver(stepId: number, driverId: number | null) {
+    setUpdating(true);
+    try {
+      const res = await authFetch(`/api/steps/${stepId}/assign`, {
+        method: 'PUT',
+        body: JSON.stringify({ driverId }),
+      });
+      if (res.ok) {
+        await fetchOrder();
+      }
+    } catch {}
+    setUpdating(false);
+  }
 
   async function fetchOrder() {
     try {
@@ -254,7 +286,15 @@ export default function OrderDetailPage() {
           </h3>
           <div className="space-y-3">
             {order.steps.map((step) => (
-              <StepCard key={step.stepId} step={step} userRole={user.role} getStatusColor={getStatusColor} />
+              <StepCard
+                key={step.stepId}
+                step={step}
+                userRole={user.role}
+                getStatusColor={getStatusColor}
+                drivers={drivers}
+                onAssignDriver={assignDriver}
+                updating={updating}
+              />
             ))}
           </div>
         </div>
@@ -305,7 +345,14 @@ export default function OrderDetailPage() {
   );
 }
 
-function StepCard({ step, userRole, getStatusColor }: { step: Step; userRole: string; getStatusColor: (n: number) => string }) {
+function StepCard({ step, userRole, getStatusColor, drivers, onAssignDriver, updating }: {
+  step: Step;
+  userRole: string;
+  getStatusColor: (n: number) => string;
+  drivers: Driver[];
+  onAssignDriver: (stepId: number, driverId: number | null) => void;
+  updating: boolean;
+}) {
   const [showQR, setShowQR] = useState(false);
   const isOrigin = step.step_type === 'origin';
 
@@ -326,16 +373,35 @@ function StepCard({ step, userRole, getStatusColor }: { step: Step; userRole: st
       </div>
       <p className="text-sm text-gray-600 mt-1">{step.address}</p>
       {step.contact_name && (
-        <p className="text-sm text-gray-500">📞 {step.contact_name} - {step.contact_phone}</p>
+        <p className="text-sm text-gray-500">{step.contact_name} - {step.contact_phone}</p>
       )}
       {step.notes && (
         <p className="text-sm text-gray-400 italic">{step.notes}</p>
       )}
       {step.package_qty > 0 && (
-        <p className="text-xs text-sky-600 mt-1">📦 {step.package_qty} paquete(s)</p>
+        <p className="text-xs text-sky-600 mt-1">{step.package_qty} paquete(s)</p>
       )}
-      {step.driverName && userRole === 'manager' && (
-        <p className="text-sm text-sky-600">Driver: {step.driverName}</p>
+
+      {/* Driver assignment (manager only, destination steps only) */}
+      {!isOrigin && userRole === 'manager' && (
+        <div className="mt-2">
+          <select
+            value={step.driverId || ''}
+            onChange={(e) => onAssignDriver(step.stepId, e.target.value ? Number(e.target.value) : null)}
+            disabled={updating}
+            className="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 disabled:opacity-50"
+          >
+            <option value="">Sin cadete asignado</option>
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}{d.phone ? ` (${d.phone})` : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Show assigned driver for non-manager roles */}
+      {!isOrigin && userRole !== 'manager' && step.driverName && (
+        <p className="text-sm text-sky-600 mt-1">Cadete: {step.driverName}</p>
       )}
 
       {/* QR toggle for non-origin steps */}
@@ -345,7 +411,7 @@ function StepCard({ step, userRole, getStatusColor }: { step: Step; userRole: st
             onClick={() => setShowQR(!showQR)}
             className="text-xs text-sky-500 mt-1"
           >
-            {showQR ? '▲ Ocultar QR' : '▼ Ver QR'}
+            {showQR ? 'Ocultar QR' : 'Ver QR'}
           </button>
           {showQR && (
             <div className="flex justify-center py-2">
