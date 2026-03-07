@@ -13,11 +13,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-    let query = 'SELECT CustomerId, CustomerName, CustomerLastname, CustomerPhone, CustomerEmail FROM Customer WHERE 1=1';
+    let query = `SELECT id, name, lastname, phone, email FROM customers WHERE 1=1`;
     const params: any[] = [];
 
     if (search) {
-      query += ' AND (CustomerName LIKE ? OR CustomerLastname LIKE ? OR CustomerCI LIKE ?)';
+      query += ' AND (name LIKE ? OR lastname LIKE ? OR ci LIKE ?)';
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern);
     }

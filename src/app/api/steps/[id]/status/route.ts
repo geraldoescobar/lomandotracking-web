@@ -48,14 +48,16 @@ export async function PUT(
     );
 
     const [steps]: any = await pool.query(
-      'SELECT status_id FROM order_steps WHERE order_id = ?',
+      `SELECT status_id, step_type FROM order_steps WHERE order_id = ?`,
       [orderId]
     );
 
+    // Solo considerar destinos para el calculo de estado de la orden
+    const destSteps = steps.filter((s: any) => s.step_type !== 'origin');
     let newOrderStatus = 1;
-    const hasInProgress = steps.some((s: any) => s.status_id === 3);
-    const allFinal = steps.every((s: any) => s.status_id >= 5);
-    const allDelivered = steps.every((s: any) => s.status_id === 5);
+    const hasInProgress = destSteps.some((s: any) => s.status_id === 3);
+    const allFinal = destSteps.length > 0 && destSteps.every((s: any) => s.status_id >= 5);
+    const allDelivered = destSteps.length > 0 && destSteps.every((s: any) => s.status_id === 5);
 
     if (allDelivered) {
       newOrderStatus = 4;
@@ -63,7 +65,7 @@ export async function PUT(
       newOrderStatus = 5;
     } else if (hasInProgress) {
       newOrderStatus = 3;
-    } else if (steps.some((s: any) => s.status_id >= 2)) {
+    } else if (destSteps.some((s: any) => s.status_id >= 2)) {
       newOrderStatus = 2;
     }
 

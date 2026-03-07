@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 interface Customer {
-  CustomerId: string;
-  CustomerName: string;
-  CustomerLastname: string;
-  CustomerPhone: string;
-  CustomerEmail: string;
+  id: string;
+  name: string;
+  lastname: string;
+  phone: string;
+  email: string;
 }
 
 export default function CustomersPage() {
@@ -59,13 +59,13 @@ export default function CustomersPage() {
         <div className="space-y-3">
           {customers.map((customer) => (
             <div
-              key={customer.CustomerId}
+              key={customer.id}
               className="bg-white rounded-lg shadow-sm p-4"
             >
-              <p className="font-medium">{customer.CustomerName} {customer.CustomerLastname}</p>
-              <p className="text-gray-600 text-sm">{customer.CustomerPhone}</p>
-              {customer.CustomerEmail && (
-                <p className="text-gray-500 text-sm">{customer.CustomerEmail}</p>
+              <p className="font-medium">{customer.name} {customer.lastname}</p>
+              <p className="text-gray-600 text-sm">{customer.phone}</p>
+              {customer.email && (
+                <p className="text-gray-500 text-sm">{customer.email}</p>
               )}
             </div>
           ))}

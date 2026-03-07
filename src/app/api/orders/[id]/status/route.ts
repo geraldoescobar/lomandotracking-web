@@ -11,7 +11,7 @@ export async function PUT(
     const authResult = authenticateRequest(request);
     if (authResult instanceof NextResponse) return authResult;
 
-    const roleCheck = authorizeRoles(authResult, 'manager');
+    const roleCheck = authorizeRoles(authResult, 'manager', 'driver');
     if (roleCheck) return roleCheck;
 
     const { id } = await params;

@@ -177,12 +177,17 @@ function SeguimientoPage() {
     setUpdating(true);
     setActionMessage('');
     try {
-      await authFetch(`/api/orders/${orderId}/status`, {
+      const res = await authFetch(`/api/orders/${orderId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ statusId: newStatusId, observation: label }),
       });
-      setActionMessage(`✓ ${label}`);
-      doSearch(code);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Error al actualizar');
+      } else {
+        setActionMessage(`✓ ${label}`);
+        await doSearch(code);
+      }
     } catch { setError('Error al actualizar'); }
     setUpdating(false);
   }
@@ -191,12 +196,17 @@ function SeguimientoPage() {
     setUpdating(true);
     setActionMessage('');
     try {
-      await authFetch(`/api/steps/${stepId}/status`, {
+      const res = await authFetch(`/api/steps/${stepId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ statusId: newStatusId, observation: label }),
       });
-      setActionMessage(`✓ ${label}`);
-      doSearch(code);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Error al actualizar');
+      } else {
+        setActionMessage(`✓ ${label}`);
+        await doSearch(code);
+      }
     } catch { setError('Error al actualizar'); }
     setUpdating(false);
   }
@@ -212,7 +222,7 @@ function SeguimientoPage() {
     if (!deliveryStepId || !receiverName || !receiverDocument) return;
     setUpdating(true);
     try {
-      await authFetch(`/api/steps/${deliveryStepId}/status`, {
+      const res = await authFetch(`/api/steps/${deliveryStepId}/status`, {
         method: 'PUT',
         body: JSON.stringify({
           statusId: 5,
@@ -221,9 +231,14 @@ function SeguimientoPage() {
           receiverDocument,
         }),
       });
-      setShowDeliveryModal(false);
-      setActionMessage('✓ Paquete entregado');
-      doSearch(code);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Error al confirmar entrega');
+      } else {
+        setShowDeliveryModal(false);
+        setActionMessage('✓ Paquete entregado');
+        await doSearch(code);
+      }
     } catch { setError('Error al confirmar entrega'); }
     setUpdating(false);
   }
@@ -309,6 +324,7 @@ function SeguimientoPage() {
           <label className="block text-sm font-medium text-gray-600 mb-2">Código de envío o paquete</label>
           <div className="flex gap-2">
             <input
+              data-testid="seguimiento-code"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -316,6 +332,7 @@ function SeguimientoPage() {
               className="flex-1 border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:ring-2 focus:ring-sky-500 focus:bg-white font-mono"
             />
             <button
+              data-testid="seguimiento-submit"
               type="submit"
               disabled={loading}
               className="bg-sky-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-sky-600 disabled:opacity-50 shadow-md"
@@ -391,18 +408,18 @@ function SeguimientoPage() {
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Nombre de quien recibe *</label>
-                <input type="text" value={receiverName} onChange={(e) => setReceiverName(e.target.value)}
+                <input data-testid="delivery-receiver-name" type="text" value={receiverName} onChange={(e) => setReceiverName(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2" placeholder="Juan Pérez" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Cédula (CI) *</label>
-                <input type="text" value={receiverDocument} onChange={(e) => setReceiverDocument(e.target.value)}
+                <input data-testid="delivery-receiver-ci" type="text" value={receiverDocument} onChange={(e) => setReceiverDocument(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2" placeholder="1.234.567-8" />
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowDeliveryModal(false)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancelar</button>
-              <button onClick={confirmDelivery} disabled={!receiverName || !receiverDocument || updating}
+              <button data-testid="delivery-cancel" onClick={() => setShowDeliveryModal(false)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancelar</button>
+              <button data-testid="delivery-confirm" onClick={confirmDelivery} disabled={!receiverName || !receiverDocument || updating}
                 className="flex-1 bg-green-500 text-white py-2 rounded-lg disabled:opacity-50">
                 {updating ? 'Guardando...' : 'Confirmar'}
               </button>
@@ -541,13 +558,13 @@ function DriverOrderView({ result, updating, onAction, onStepAction, onDeliver, 
         {/* Driver order actions */}
         <div className="mt-4 space-y-2">
           {order.statusId === 1 && (
-            <button onClick={() => onAction(order.orderId, 2, 'Retiro confirmado')} disabled={updating}
+            <button data-testid="btn-confirm-pickup" onClick={() => onAction(order.orderId, 2, 'Retiro confirmado')} disabled={updating}
               className="w-full bg-sky-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 shadow-md">
               📋 Confirmar retiro
             </button>
           )}
           {order.statusId === 2 && (
-            <button onClick={() => onAction(order.orderId, 3, 'Entrega iniciada')} disabled={updating}
+            <button data-testid="btn-start-delivery" onClick={() => onAction(order.orderId, 3, 'Entrega iniciada')} disabled={updating}
               className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 shadow-md">
               🚚 Salir a entregar
             </button>
@@ -585,18 +602,18 @@ function DriverOrderView({ result, updating, onAction, onStepAction, onDeliver, 
                 {step.statusId < 5 && (
                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
                     {(step.statusId === 1 || step.statusId === 2) && (
-                      <button onClick={() => onStepAction(step.stepId, 3, 'En camino')} disabled={updating}
+                      <button data-testid={`btn-en-camino-${i}`} onClick={() => onStepAction(step.stepId, 3, 'En camino')} disabled={updating}
                         className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                         🚚 En camino
                       </button>
                     )}
                     {step.statusId === 3 && (
                       <>
-                        <button onClick={() => onDeliver(step.stepId)} disabled={updating}
+                        <button data-testid={`btn-deliver-${i}`} onClick={() => onDeliver(step.stepId)} disabled={updating}
                           className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                           Entregar
                         </button>
-                        <button onClick={() => onReport(step.stepId)} disabled={updating}
+                        <button data-testid={`btn-report-${i}`} onClick={() => onReport(step.stepId)} disabled={updating}
                           className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                           Problema
                         </button>

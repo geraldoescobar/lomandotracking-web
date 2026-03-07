@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         o.id as orderId,
         o.code as orderCode,
         o.description,
-        o.status_id,
+        o.status_id as statusId,
         os.name as statusName,
         os.display_order as statusOrder,
         o.created_at,
